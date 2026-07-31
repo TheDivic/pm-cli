@@ -1,0 +1,13 @@
+# Build output
+/bin/
+
+# Go test / profiling artifacts
+*.out
+*.test
+coverage.*
+
+# Editor / OS
+.DS_Store
+
+# Stray root build artifact (canonical output is bin/pm)
+/pm

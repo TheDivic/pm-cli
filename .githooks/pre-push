@@ -1,0 +1,20 @@
+#!/bin/sh
+# Block direct pushes to protected branches. Land changes via a feature branch
+# and a pull request instead. Enable with:  git config core.hooksPath .githooks
+#
+# This is a local convenience guard; the authoritative rule is the GitHub
+# branch-protection setting on the remote.
+
+protected="main"
+
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+	case "$remote_ref" in
+	"refs/heads/$protected")
+		echo "pre-push: direct pushes to '$protected' are blocked." >&2
+		echo "          Create a feature branch and open a pull request." >&2
+		exit 1
+		;;
+	esac
+done
+
+exit 0

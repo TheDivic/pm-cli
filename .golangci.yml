@@ -1,0 +1,20 @@
+# golangci-lint configuration. Run with `make lint` (or `golangci-lint run`).
+# Pin the tool version in CI so local and CI results match.
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - revive
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
