@@ -52,6 +52,7 @@ func TestFieldLevelFindings(t *testing.T) {
 		{"zero priority", func(d *model.Document) { z := 0; d.Project.Priority = &z }, "project.priority"},
 		{"bad created date", func(d *model.Document) { d.Project.Created = "2026-13-40" }, "project.created"},
 		{"done needs completed", func(d *model.Document) { d.Project.Status = model.ProjectDone }, "project.completed"},
+		{"zero task priority", func(d *model.Document) { z := 0; d.Tasks[0].Priority = &z }, "tasks[0].priority"},
 		{"bad task id format", func(d *model.Document) { d.Tasks[0].ID = "xx-1" }, "tasks[0].id"},
 		{"bad task status", func(d *model.Document) { d.Tasks[0].Status = "weird" }, "tasks[0].status"},
 		{"task done needs completed", func(d *model.Document) { d.Tasks[0].Status = model.TaskDone }, "tasks[0].completed"},

@@ -58,6 +58,9 @@ func TestProjectsListText(t *testing.T) {
 	if !strings.Contains(stdout, "demo") || !strings.Contains(stdout, "Demo Project") {
 		t.Fatalf("list output missing project: %q", stdout)
 	}
+	if !strings.Contains(stdout, "PROGRESS") || !strings.Contains(stdout, "0%") {
+		t.Fatalf("list output missing progress column: %q", stdout)
+	}
 }
 
 func TestProjectsListJSON(t *testing.T) {

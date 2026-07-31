@@ -42,6 +42,7 @@ type taskYAML struct {
 	Title        string            `yaml:"title"`
 	Description  string            `yaml:"description"`
 	Status       string            `yaml:"status"`
+	Priority     *int              `yaml:"priority"`
 	Parent       string            `yaml:"parent"`
 	Created      string            `yaml:"created"`
 	Started      string            `yaml:"started"`
@@ -126,6 +127,7 @@ func convertTask(t *taskYAML) model.Task {
 		Title:        t.Title,
 		Description:  t.Description,
 		Status:       model.TaskStatus(t.Status),
+		Priority:     t.Priority,
 		Parent:       t.Parent,
 		Created:      t.Created,
 		Started:      t.Started,

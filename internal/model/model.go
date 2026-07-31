@@ -88,6 +88,7 @@ type Task struct {
 	Title        string
 	Description  string
 	Status       TaskStatus
+	Priority     *int
 	Parent       string
 	Created      string
 	Started      string

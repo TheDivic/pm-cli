@@ -21,8 +21,133 @@ func newProjectsCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Inspect and manage projects",
 	}
 	cmd.AddCommand(newProjectsListCmd(opts))
+	cmd.AddCommand(newProjectsShowCmd(opts))
 	cmd.AddCommand(newProjectsValidateCmd(opts))
 	return cmd
+}
+
+// ---- projects show ----
+
+func newProjectsShowCmd(opts *GlobalOptions) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <project-id>",
+		Short: "Show a project's details",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := discover.Discover(rootOrCWD(opts))
+			if err != nil {
+				return pmerr.IO("cannot discover projects: %v", err)
+			}
+			var target *discover.Project
+			for i := range ws.Projects {
+				if ws.Projects[i].ID() == args[0] {
+					target = &ws.Projects[i]
+					break
+				}
+			}
+			if target == nil {
+				return pmerr.Usage("no project with id %q under the discovery root", args[0]).WithProject(args[0])
+			}
+			if opts.JSON {
+				return writeProjectShowJSON(cmd.OutOrStdout(), target)
+			}
+			writeProjectShowText(cmd.OutOrStdout(), target)
+			return nil
+		},
+	}
+}
+
+type projectDetail struct {
+	ID           string              `json:"id"`
+	Title        string              `json:"title"`
+	TaskIDPrefix string              `json:"task_id_prefix"`
+	Status       string              `json:"status"`
+	Priority     *int                `json:"priority,omitempty"`
+	Areas        []string            `json:"areas,omitempty"`
+	Created      string              `json:"created"`
+	Started      string              `json:"started,omitempty"`
+	Due          string              `json:"due,omitempty"`
+	Blocked      *model.Blocked      `json:"blocked,omitempty"`
+	Cancellation *model.Cancellation `json:"cancellation,omitempty"`
+	Completed    string              `json:"completed,omitempty"`
+	Path         string              `json:"path"`
+	TaskCounts   map[string]int      `json:"task_counts"`
+}
+
+func taskCounts(doc *model.Document) map[string]int {
+	counts := map[string]int{"total": len(doc.Tasks)}
+	for i := range doc.Tasks {
+		counts[string(doc.Tasks[i].Status)]++
+	}
+	return counts
+}
+
+func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
+	pr := p.Doc.Project
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return enc.Encode(projectDetail{
+		ID:           pr.ID,
+		Title:        pr.Title,
+		TaskIDPrefix: pr.TaskIDPrefix,
+		Status:       string(pr.Status),
+		Priority:     pr.Priority,
+		Areas:        pr.Areas,
+		Created:      pr.Created,
+		Started:      pr.Started,
+		Due:          pr.Due,
+		Blocked:      pr.Blocked,
+		Cancellation: pr.Cancellation,
+		Completed:    pr.Completed,
+		Path:         p.Path,
+		TaskCounts:   taskCounts(p.Doc),
+	})
+}
+
+func writeProjectShowText(w io.Writer, p *discover.Project) {
+	pr := p.Doc.Project
+	field(w, "ID", pr.ID)
+	field(w, "Title", pr.Title)
+	field(w, "Prefix", pr.TaskIDPrefix)
+	field(w, "Status", string(pr.Status))
+	field(w, "Priority", priorityLabel(pr.Priority))
+	if len(pr.Areas) > 0 {
+		field(w, "Areas", joinComma(pr.Areas))
+	}
+	field(w, "Created", pr.Created)
+	optField(w, "Started", pr.Started)
+	optField(w, "Due", pr.Due)
+	optField(w, "Completed", pr.Completed)
+	if pr.Blocked != nil {
+		field(w, "Blocked", fmt.Sprintf("since %s: %s", pr.Blocked.Since, pr.Blocked.Reason))
+	}
+	if pr.Cancellation != nil {
+		field(w, "Cancelled", fmt.Sprintf("%s: %s", pr.Cancellation.Date, pr.Cancellation.Reason))
+	}
+	field(w, "Path", p.Path)
+	counts := taskCounts(p.Doc)
+	total := counts["total"]
+	if total == 0 {
+		field(w, "Tasks", "none")
+		return
+	}
+	field(w, "Tasks", progressBar(counts[string(model.TaskDone)], total, 20))
+	for _, s := range taskStatusOrder {
+		if n := counts[string(s)]; n > 0 {
+			fmt.Fprintf(w, "  %-13s%d\n", string(s)+":", n)
+		}
+	}
+}
+
+// taskStatusOrder lists task statuses in lifecycle order for progress display.
+var taskStatusOrder = []model.TaskStatus{
+	model.TaskBacklog,
+	model.TaskTodo,
+	model.TaskInProgress,
+	model.TaskInReview,
+	model.TaskDone,
+	model.TaskCancelled,
 }
 
 func rootOrCWD(opts *GlobalOptions) string {
@@ -54,11 +179,12 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 type projectSummary struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Status   string   `json:"status"`
-	Priority *int     `json:"priority,omitempty"`
-	Areas    []string `json:"areas,omitempty"`
+	ID         string         `json:"id"`
+	Title      string         `json:"title"`
+	Status     string         `json:"status"`
+	Priority   *int           `json:"priority,omitempty"`
+	Areas      []string       `json:"areas,omitempty"`
+	TaskCounts map[string]int `json:"task_counts"`
 }
 
 // listOrder returns the successfully decoded projects sorted for display:
@@ -98,11 +224,12 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 	}{Projects: []projectSummary{}}
 	for _, p := range ordered {
 		out.Projects = append(out.Projects, projectSummary{
-			ID:       p.Doc.Project.ID,
-			Title:    p.Doc.Project.Title,
-			Status:   string(p.Doc.Project.Status),
-			Priority: p.Doc.Project.Priority,
-			Areas:    p.Doc.Project.Areas,
+			ID:         p.Doc.Project.ID,
+			Title:      p.Doc.Project.Title,
+			Status:     string(p.Doc.Project.Status),
+			Priority:   p.Doc.Project.Priority,
+			Areas:      p.Doc.Project.Areas,
+			TaskCounts: taskCounts(p.Doc),
 		})
 	}
 	enc := json.NewEncoder(w)
@@ -113,11 +240,15 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 
 func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
 	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED")
+	// PROGRESS is last so its multibyte bar cannot skew tabwriter's alignment
+	// of the preceding columns.
+	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED\tPROGRESS")
 	for _, p := range ordered {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+		c := taskCounts(p.Doc)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
-			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created))
+			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created),
+			miniProgress(c[string(model.TaskDone)], c["total"], 10))
 	}
 	if err := tw.Flush(); err != nil {
 		return err
