@@ -7,6 +7,7 @@
 package discover
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -139,6 +140,16 @@ func load(root, path string) Project {
 			Field:   "project.id",
 			Message: "must match the task filename stem " + strconvQuote(stem),
 		})
+	}
+
+	// Each area slug must resolve to areas/<slug>.md under the discovery root.
+	for i, area := range doc.Project.Areas {
+		if _, statErr := os.Stat(filepath.Join(root, "areas", area+".md")); statErr != nil {
+			p.Findings = append(p.Findings, validate.Finding{
+				Field:   fmt.Sprintf("project.areas[%d]", i),
+				Message: fmt.Sprintf("area %q does not resolve to areas/%s.md under the root", area, area),
+			})
+		}
 	}
 	return p
 }

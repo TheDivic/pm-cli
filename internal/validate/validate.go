@@ -225,6 +225,59 @@ func validateReferences(doc *model.Document, ids map[string]bool) []Finding {
 		}
 	}
 	f = append(f, parentCycles(doc, parent)...)
+	f = append(f, blockerCycles(doc)...)
+	return f
+}
+
+// blockerCycles reports tasks that sit on a cycle of blocker references, where
+// following blocked.tasks edges eventually returns to the starting task.
+func blockerCycles(doc *model.Document) []Finding {
+	blockers := make(map[string][]string, len(doc.Tasks))
+	for i := range doc.Tasks {
+		t := &doc.Tasks[i]
+		if t.ID != "" && t.Blocked != nil {
+			blockers[t.ID] = t.Blocked.Tasks
+		}
+	}
+
+	const (
+		white = 0
+		gray  = 1
+		black = 2
+	)
+	color := map[string]int{}
+	var visit func(id string) bool
+	visit = func(id string) bool {
+		color[id] = gray
+		for _, b := range blockers[id] {
+			if b == id {
+				continue // self-block is reported separately
+			}
+			if color[b] == gray {
+				return true
+			}
+			if color[b] == white && visit(b) {
+				return true
+			}
+		}
+		color[id] = black
+		return false
+	}
+
+	var f []Finding
+	for i := range doc.Tasks {
+		id := doc.Tasks[i].ID
+		if id == "" || color[id] != white || len(blockers[id]) == 0 {
+			continue
+		}
+		if visit(id) {
+			f = append(f, Finding{
+				Field:   fmt.Sprintf("tasks[%d].blocked", i),
+				Task:    id,
+				Message: "is part of a blocker cycle",
+			})
+		}
+	}
 	return f
 }
 

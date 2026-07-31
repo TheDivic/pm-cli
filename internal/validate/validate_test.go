@@ -109,6 +109,27 @@ func TestParentCycle(t *testing.T) {
 	}
 }
 
+func TestBlockerCycle(t *testing.T) {
+	d := validDoc()
+	blk := func(target string) *model.Blocked {
+		return &model.Blocked{Reason: "x", Since: "2026-07-31", Tasks: []string{target}}
+	}
+	d.Tasks = []model.Task{
+		{ID: "dm-001", Title: "A", Status: model.TaskTodo, Created: "2026-07-31", Blocked: blk("dm-002")},
+		{ID: "dm-002", Title: "B", Status: model.TaskTodo, Created: "2026-07-31", Blocked: blk("dm-001")},
+	}
+	f := Document(d)
+	found := false
+	for _, x := range f {
+		if strings.Contains(x.Message, "blocker cycle") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected a blocker-cycle finding, got: %v", f)
+	}
+}
+
 func TestBlockerSelfAndUnknown(t *testing.T) {
 	d := validDoc()
 	d.Tasks[0].Blocked = &model.Blocked{Reason: "x", Since: "2026-07-31", Tasks: []string{"dm-001", "dm-404"}}
