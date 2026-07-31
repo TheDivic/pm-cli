@@ -58,7 +58,6 @@ type projectSummary struct {
 	Status   string   `json:"status"`
 	Priority *int     `json:"priority,omitempty"`
 	Areas    []string `json:"areas,omitempty"`
-	Path     string   `json:"path"`
 }
 
 // listOrder returns the successfully decoded projects sorted for display:
@@ -99,7 +98,6 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 			Status:   string(p.Doc.Project.Status),
 			Priority: p.Doc.Project.Priority,
 			Areas:    p.Doc.Project.Areas,
-			Path:     p.Path,
 		})
 	}
 	enc := json.NewEncoder(w)
@@ -110,11 +108,11 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 
 func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
 	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTATUS\tPRIO\tCREATED\tTITLE\tPATH")
+	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED")
 	for _, p := range ordered {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
-			p.Doc.Project.ID, p.Doc.Project.Status, priorityLabel(p.Doc.Project.Priority),
-			dateLabel(p.Doc.Project.Created), p.Doc.Project.Title, p.Path)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
+			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created))
 	}
 	if err := tw.Flush(); err != nil {
 		return err
