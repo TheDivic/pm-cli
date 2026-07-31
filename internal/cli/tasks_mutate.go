@@ -74,14 +74,14 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&project, "project", "", "project ID (required)")
-	f.StringVar(&title, "title", "", "task title (required)")
+	f.StringVarP(&project, "project", "p", "", "project ID (required)")
+	f.StringVarP(&title, "title", "t", "", "task title (required)")
 	f.StringVar(&descFile, "description-file", "", "read description from a file, or - for stdin")
-	f.StringVar(&status, "status", "todo", "initial task status")
+	f.StringVarP(&status, "status", "s", "backlog", "initial task status")
 	f.IntVar(&priority, "priority", 0, "task priority")
 	f.StringVar(&parent, "parent", "", "parent task ID")
 	f.StringVar(&due, "due", "", "due date (YYYY-MM-DD)")
-	f.StringSliceVar(&tags, "tag", nil, "tag (repeatable)")
+	f.StringSliceVarP(&tags, "tag", "g", nil, "tag (repeatable)")
 	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("title")
 	return cmd
@@ -137,7 +137,7 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 	f := cmd.Flags()
-	f.StringVar(&title, "title", "", "new title")
+	f.StringVarP(&title, "title", "t", "", "new title")
 	f.StringVar(&descFile, "description-file", "", "read description from a file, or - for stdin")
 	f.IntVar(&priority, "priority", 0, "set priority")
 	f.BoolVar(&clearPriority, "clear-priority", false, "remove the priority")
@@ -174,7 +174,7 @@ func newTasksStatusCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&reason, "reason", "", "reason (required for cancelled)")
+	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason (required for cancelled)")
 	return cmd
 }
 
@@ -204,7 +204,7 @@ func newTasksBlockCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&reason, "reason", "", "reason for the blockage (required)")
+	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason for the blockage (required)")
 	cmd.Flags().StringSliceVar(&blockers, "task", nil, "blocking task ID (repeatable)")
 	_ = cmd.MarkFlagRequired("reason")
 	return cmd

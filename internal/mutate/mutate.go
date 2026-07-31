@@ -137,7 +137,7 @@ type TaskAdd struct {
 func AddTask(doc *model.Document, a TaskAdd, clk clock.Clock) (string, error) {
 	status := a.Status
 	if status == "" {
-		status = model.TaskTodo
+		status = model.TaskBacklog
 	}
 	t := model.Task{
 		ID:          NextTaskID(doc),

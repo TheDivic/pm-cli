@@ -193,7 +193,7 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	flags.StringSliceVar(&f.Statuses, "status", nil, "filter by project status (repeatable)")
+	flags.StringSliceVarP(&f.Statuses, "status", "s", nil, "filter by project status (repeatable)")
 	flags.IntSliceVar(&f.Priorities, "priority", nil, "filter by priority (repeatable)")
 	flags.StringSliceVar(&f.Areas, "area", nil, "filter by area (repeatable)")
 	return cmd

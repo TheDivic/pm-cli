@@ -21,6 +21,9 @@ pm [--root <path>] [--json] [--no-ignore] <command> [arguments]
   results go to stdout; errors go to stderr.
 - `--no-ignore` — include files that `.gitignore` rules would exclude.
 
+Common flags have shorthands: `-p` (`--project`), `-t` (`--title`), `-s`
+(`--status`), `-r` (`--reason`), `-g` (`--tag`), and `-a` (`--all`).
+
 ## Discovery
 
 `pm` finds every `*.tasks.yaml` file beneath the root. It honors `.gitignore`
@@ -93,7 +96,7 @@ pm tasks unblock <task-id>
   `cancelled` by default; `-a`/`--all` includes them, and an explicit `--status`
   overrides. Filters combine with AND; repeated values combine with OR.
 - **add** — assigns the next task ID and the `created` date. Default status is
-  `todo`. `--description-file -` reads the description from standard input.
+  `backlog`. `--description-file -` reads the description from standard input.
 - **status** — manages lifecycle dates and the mutually exclusive terminal and
   blocking fields. `cancelled` requires `--reason`.
 - **block / unblock** — record or remove a blocking condition without changing

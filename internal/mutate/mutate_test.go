@@ -55,7 +55,7 @@ func TestAddTaskAllocatesAndStamps(t *testing.T) {
 		t.Fatalf("id = %s", id)
 	}
 	last := d.Tasks[len(d.Tasks)-1]
-	if last.ID != "dm-002" || last.Status != model.TaskTodo || last.Created != "2026-07-31" {
+	if last.ID != "dm-002" || last.Status != model.TaskBacklog || last.Created != "2026-07-31" {
 		t.Fatalf("unexpected task: %+v", last)
 	}
 }
