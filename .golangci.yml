@@ -1,20 +1,19 @@
-# golangci-lint configuration. Run with `make lint` (or `golangci-lint run`).
-# Pin the tool version in CI so local and CI results match.
-run:
-  timeout: 5m
+# golangci-lint v2 configuration. Run with `make lint` (or `golangci-lint run`).
+# CI installs golangci-lint via the official action; keep this schema in sync
+# with the installed major version.
+version: "2"
 
 linters:
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
+    # errcheck, govet, ineffassign, staticcheck, and unused are on by default.
     - misspell
     - revive
+
+formatters:
+  enable:
     - gofmt
     - goimports
-
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/TheDivic/plaintext-tasks
