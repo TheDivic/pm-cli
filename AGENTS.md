@@ -25,6 +25,12 @@ path is ours to decide. See [`implementation-plan.md`](implementation-plan.md).
   mutate live knowledge base task files from tests; use temporary copies.
 - Keep lifecycle dates behind the injectable clock; never read the machine date
   directly.
+- **In a sandbox, build to a scratch path, not `./bin`.** When the working tree
+  is a mounted copy of the host's (for example a Docker sandbox), a binary you
+  compile is built for the sandbox OS/arch and will overwrite the host's
+  `bin/pm` with something it cannot exec ("exec format error"). Use
+  `go build -o /tmp/pm ./cmd/pm` or `go run ./cmd/pm ...` for smoke tests, and
+  leave `bin/` for the host's own `make build`.
 
 ## Layout
 
