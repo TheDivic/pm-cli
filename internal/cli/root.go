@@ -40,20 +40,9 @@ func newRootCmd(opts *GlobalOptions, _ clock.Clock) *cobra.Command {
 	pf.BoolVar(&opts.NoIgnore, "no-ignore", false, "include .gitignored paths in discovery")
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newProjectsCmd())
+	root.AddCommand(newProjectsCmd(opts))
 	root.AddCommand(newTasksCmd())
 	return root
-}
-
-// newProjectsCmd is the parent for project commands. Subcommands are added in
-// later tasks; invoked on its own it prints help.
-func newProjectsCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "projects",
-		Short: "Inspect and manage projects",
-		Args:  cobra.NoArgs,
-		RunE:  func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
-	}
 }
 
 // newTasksCmd is the parent for task commands. Subcommands are added in later
