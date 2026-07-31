@@ -23,6 +23,7 @@ func newProjectsCmd(opts *GlobalOptions) *cobra.Command {
 	cmd.AddCommand(newProjectsListCmd(opts))
 	cmd.AddCommand(newProjectsShowCmd(opts))
 	cmd.AddCommand(newProjectsValidateCmd(opts))
+	cmd.AddCommand(newProjectsFormatCmd(opts))
 	return cmd
 }
 
