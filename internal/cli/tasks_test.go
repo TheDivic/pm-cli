@@ -37,18 +37,44 @@ tasks:
     completed: "2026-07-31"
 `
 
-func TestTasksListAll(t *testing.T) {
+func TestTasksListAllFlagShowsEverything(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)
 
-	code, stdout, stderr := run("--root", root, "tasks", "list")
+	code, stdout, stderr := run("--root", root, "tasks", "list", "--all")
 	if code != 0 {
 		t.Fatalf("exit = %d (stderr: %s)", code, stderr)
 	}
 	for _, id := range []string{"dm-001", "dm-002", "dm-003"} {
 		if !strings.Contains(stdout, id) {
-			t.Fatalf("list missing %s: %q", id, stdout)
+			t.Fatalf("list --all missing %s: %q", id, stdout)
 		}
+	}
+}
+
+func TestTasksListHidesTerminalByDefault(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)
+
+	// Default: dm-003 (done) is hidden; open tasks remain.
+	_, stdout, _ := run("--root", root, "tasks", "list")
+	if !strings.Contains(stdout, "dm-001") || !strings.Contains(stdout, "dm-002") {
+		t.Fatalf("open tasks should be listed: %q", stdout)
+	}
+	if strings.Contains(stdout, "dm-003") {
+		t.Fatalf("done task should be hidden by default: %q", stdout)
+	}
+
+	// -a reveals it.
+	_, allOut, _ := run("--root", root, "tasks", "list", "-a")
+	if !strings.Contains(allOut, "dm-003") {
+		t.Fatalf("-a should reveal the done task: %q", allOut)
+	}
+
+	// An explicit --status done overrides the default and shows only done.
+	_, doneOut, _ := run("--root", root, "tasks", "list", "--status", "done")
+	if !strings.Contains(doneOut, "dm-003") || strings.Contains(doneOut, "dm-001") {
+		t.Fatalf("--status done should show only done: %q", doneOut)
 	}
 }
 
