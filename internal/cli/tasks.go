@@ -79,26 +79,28 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 type taskSummary struct {
-	ID      string   `json:"id"`
-	Project string   `json:"project"`
-	Status  string   `json:"status"`
-	Title   string   `json:"title"`
-	Parent  string   `json:"parent,omitempty"`
-	Due     string   `json:"due,omitempty"`
-	Tags    []string `json:"tags,omitempty"`
-	Blocked bool     `json:"blocked,omitempty"`
+	ID       string   `json:"id"`
+	Project  string   `json:"project"`
+	Status   string   `json:"status"`
+	Priority *int     `json:"priority,omitempty"`
+	Title    string   `json:"title"`
+	Parent   string   `json:"parent,omitempty"`
+	Due      string   `json:"due,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
+	Blocked  bool     `json:"blocked,omitempty"`
 }
 
 func summarize(r query.TaskRef) taskSummary {
 	return taskSummary{
-		ID:      r.Task.ID,
-		Project: r.Project.ID,
-		Status:  string(r.Task.Status),
-		Title:   r.Task.Title,
-		Parent:  r.Task.Parent,
-		Due:     r.Task.Due,
-		Tags:    r.Task.Tags,
-		Blocked: r.Task.Blocked != nil,
+		ID:       r.Task.ID,
+		Project:  r.Project.ID,
+		Status:   string(r.Task.Status),
+		Priority: r.Task.Priority,
+		Title:    r.Task.Title,
+		Parent:   r.Task.Parent,
+		Due:      r.Task.Due,
+		Tags:     r.Task.Tags,
+		Blocked:  r.Task.Blocked != nil,
 	}
 }
 
@@ -117,9 +119,10 @@ func writeTasksJSON(w io.Writer, refs []query.TaskRef) error {
 
 func writeTasksText(w io.Writer, refs []query.TaskRef) {
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTATUS\tPROJECT\tTITLE")
+	fmt.Fprintln(tw, "ID\tSTATUS\tPRIO\tPROJECT\tTITLE")
 	for _, r := range refs {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Task.ID, r.Task.Status, r.Project.Title, r.Task.Title)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+			r.Task.ID, r.Task.Status, priorityLabel(r.Task.Priority), r.Project.Title, r.Task.Title)
 	}
 	_ = tw.Flush()
 }
@@ -162,6 +165,7 @@ func writeTaskDetailText(w io.Writer, r *query.TaskRef) {
 	field(w, "Project", r.Project.ID)
 	field(w, "Title", t.Title)
 	field(w, "Status", string(t.Status))
+	field(w, "Priority", priorityLabel(t.Priority))
 	optField(w, "Parent", t.Parent)
 	field(w, "Created", t.Created)
 	optField(w, "Started", t.Started)
@@ -192,6 +196,7 @@ type taskDetailJSON struct {
 	Title        string              `json:"title"`
 	Description  string              `json:"description,omitempty"`
 	Status       string              `json:"status"`
+	Priority     *int                `json:"priority,omitempty"`
 	Parent       string              `json:"parent,omitempty"`
 	Created      string              `json:"created"`
 	Started      string              `json:"started,omitempty"`
@@ -211,6 +216,7 @@ func taskDetail(r *query.TaskRef) taskDetailJSON {
 		Title:        t.Title,
 		Description:  t.Description,
 		Status:       string(t.Status),
+		Priority:     t.Priority,
 		Parent:       t.Parent,
 		Created:      t.Created,
 		Started:      t.Started,

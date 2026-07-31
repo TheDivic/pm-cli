@@ -113,13 +113,30 @@ func statusRank(s model.TaskStatus) int {
 	}
 }
 
-// SortForList stably orders refs by status (active work first), preserving the
-// incoming file order within each status. File order is the task's priority, so
-// no further tiebreak is needed.
+// SortForList stably orders refs by status (active work first), then by
+// explicit task priority (lowest number first, tasks without a priority last).
+// Ties keep the incoming file order, which acts as the within-status priority.
 func SortForList(refs []TaskRef) {
 	sort.SliceStable(refs, func(i, j int) bool {
-		return statusRank(refs[i].Task.Status) < statusRank(refs[j].Task.Status)
+		si, sj := statusRank(refs[i].Task.Status), statusRank(refs[j].Task.Status)
+		if si != sj {
+			return si < sj
+		}
+		return priorityLess(refs[i].Task.Priority, refs[j].Task.Priority)
 	})
+}
+
+// priorityLess orders by priority with lower numbers first and unset last.
+// Equal or both-unset priorities compare equal so a stable sort keeps file
+// order.
+func priorityLess(a, b *int) bool {
+	if (a == nil) != (b == nil) {
+		return a != nil // a set, b unset -> a first
+	}
+	if a != nil && b != nil && *a != *b {
+		return *a < *b
+	}
+	return false
 }
 
 // Find returns the ref for a task by its global ID, or nil if not found.

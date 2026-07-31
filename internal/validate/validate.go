@@ -147,6 +147,9 @@ func validateTasks(doc *model.Document) []Finding {
 		} else if !t.Status.Valid() {
 			add("status", fmt.Sprintf("%q is not a valid task status", t.Status))
 		}
+		if t.Priority != nil && *t.Priority < 1 {
+			add("priority", "must be a positive integer")
+		}
 		if t.Created == "" {
 			add("created", "is required")
 		} else if !validDate(t.Created) {

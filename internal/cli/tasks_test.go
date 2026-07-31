@@ -74,6 +74,64 @@ func TestTasksListStatusFilterJSON(t *testing.T) {
 	}
 }
 
+const projectWithPriorities = `schema-version: 1
+
+project:
+  id: prio
+  title: Prio
+  task-id-prefix: pr
+  status: in-progress
+  created: "2026-07-31"
+  started: "2026-07-31"
+
+tasks:
+  - id: pr-001
+    title: No priority
+    status: todo
+    created: "2026-07-31"
+  - id: pr-002
+    title: Second
+    status: todo
+    priority: 2
+    created: "2026-07-31"
+  - id: pr-003
+    title: First
+    status: todo
+    priority: 1
+    created: "2026-07-31"
+`
+
+func TestTasksListPriorityOrder(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "prio", "prio.tasks.yaml"), projectWithPriorities)
+
+	code, stdout, _ := run("--json", "--root", root, "tasks", "list")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	var out struct {
+		Tasks []struct {
+			ID string `json:"id"`
+		} `json:"tasks"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	got := []string{out.Tasks[0].ID, out.Tasks[1].ID, out.Tasks[2].ID}
+	want := []string{"pr-003", "pr-002", "pr-001"} // prio 1, prio 2, then unset
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+
+	// The text output carries a PRIO column.
+	_, text, _ := run("--root", root, "tasks", "list")
+	if !strings.Contains(text, "PRIO") {
+		t.Fatalf("missing PRIO column: %q", text)
+	}
+}
+
 func TestTasksShow(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)

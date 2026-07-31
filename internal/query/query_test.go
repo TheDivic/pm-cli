@@ -128,6 +128,25 @@ func TestSortForList(t *testing.T) {
 	}
 }
 
+func TestSortForListPriority(t *testing.T) {
+	p := func(n int) *int { return &n }
+	refs := []TaskRef{
+		{Task: &model.Task{ID: "dm-001", Status: model.TaskTodo}, Project: demoProject()},
+		{Task: &model.Task{ID: "dm-002", Status: model.TaskTodo, Priority: p(2)}, Project: demoProject()},
+		{Task: &model.Task{ID: "dm-003", Status: model.TaskTodo, Priority: p(1)}, Project: demoProject()},
+		{Task: &model.Task{ID: "dm-004", Status: model.TaskInProgress}, Project: demoProject()},
+	}
+	SortForList(refs)
+	got := ids(refs)
+	// in-progress first, then todo by priority (1, 2, then unset last).
+	want := []string{"dm-004", "dm-003", "dm-002", "dm-001"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestFind(t *testing.T) {
 	refs := []TaskRef{mk("dm-001", "todo", "", "", nil, false)}
 	if Find(refs, "dm-001") == nil {
