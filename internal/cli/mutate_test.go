@@ -39,6 +39,21 @@ func TestCreateAddStatusLifecycle(t *testing.T) {
 	}
 }
 
+func TestTasksAddShorthandsAndBacklogDefault(t *testing.T) {
+	root := t.TempDir()
+	run("--root", root, "projects", "create", "--id", "demo", "--title", "Demo", "--task-id-prefix", "dm")
+
+	// -p/-t shorthands; no --status so the default applies.
+	code, _, stderr := run("--root", root, "tasks", "add", "-p", "demo", "-t", "Shorthand task")
+	if code != 0 {
+		t.Fatalf("add via shorthands exit %d: %s", code, stderr)
+	}
+	_, out, _ := run("--json", "--root", root, "tasks", "show", "dm-001")
+	if !strings.Contains(out, `"status": "backlog"`) {
+		t.Fatalf("new task should default to backlog: %s", out)
+	}
+}
+
 func TestCreateRefusesDuplicateID(t *testing.T) {
 	root := t.TempDir()
 	run("--root", root, "projects", "create", "--id", "demo", "--title", "Demo", "--task-id-prefix", "dm")

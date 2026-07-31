@@ -89,9 +89,9 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&all, "all", "a", false, "include done and cancelled tasks")
-	flags.StringSliceVar(&f.Projects, "project", nil, "filter by project ID (repeatable)")
-	flags.StringSliceVar(&f.Statuses, "status", nil, "filter by task status (repeatable)")
-	flags.StringSliceVar(&f.Tags, "tag", nil, "filter by tag (repeatable)")
+	flags.StringSliceVarP(&f.Projects, "project", "p", nil, "filter by project ID (repeatable)")
+	flags.StringSliceVarP(&f.Statuses, "status", "s", nil, "filter by task status (repeatable)")
+	flags.StringSliceVarP(&f.Tags, "tag", "g", nil, "filter by tag (repeatable)")
 	flags.StringSliceVar(&f.Areas, "area", nil, "filter by project area (repeatable)")
 	flags.StringVar(&f.Parent, "parent", "", "filter by parent task ID")
 	flags.BoolVar(&blocked, "blocked", false, "filter by whether a task is blocked")
