@@ -189,6 +189,28 @@ func TestProjectsListFilters(t *testing.T) {
 	eq(listIDs(t, root, "--priority", "1", "--priority", "2"), []string{"a", "c"})
 }
 
+func TestRootFromEnvVar(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	t.Setenv("PM_ROOT", root)
+
+	// No --root: PM_ROOT supplies the discovery root.
+	code, stdout, stderr := run("projects", "list")
+	if code != 0 {
+		t.Fatalf("exit = %d (stderr: %s)", code, stderr)
+	}
+	if !strings.Contains(stdout, "demo") {
+		t.Fatalf("PM_ROOT not used: %q", stdout)
+	}
+
+	// An explicit --root overrides PM_ROOT.
+	empty := t.TempDir()
+	_, stdout2, _ := run("--root", empty, "projects", "list")
+	if strings.Contains(stdout2, "demo") {
+		t.Fatalf("--root should override PM_ROOT: %q", stdout2)
+	}
+}
+
 func TestProjectsValidateValid(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
