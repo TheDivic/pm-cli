@@ -111,6 +111,12 @@ func TestProjectsShow(t *testing.T) {
 	if !strings.Contains(stdout, "3 total") {
 		t.Fatalf("show output missing task count: %q", stdout)
 	}
+	// Per-status breakdown: one todo, one in-progress, one done.
+	for _, want := range []string{"todo:", "in-progress:", "done:"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("show output missing status breakdown %q: %q", want, stdout)
+		}
+	}
 }
 
 func TestProjectsShowUnknownIsUsageError(t *testing.T) {

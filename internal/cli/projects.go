@@ -126,7 +126,23 @@ func writeProjectShowText(w io.Writer, p *discover.Project) {
 		field(w, "Cancelled", fmt.Sprintf("%s: %s", pr.Cancellation.Date, pr.Cancellation.Reason))
 	}
 	field(w, "Path", p.Path)
-	field(w, "Tasks", fmt.Sprintf("%d total", taskCounts(p.Doc)["total"]))
+	counts := taskCounts(p.Doc)
+	field(w, "Tasks", fmt.Sprintf("%d total", counts["total"]))
+	for _, s := range taskStatusOrder {
+		if n := counts[string(s)]; n > 0 {
+			fmt.Fprintf(w, "  %-13s%d\n", string(s)+":", n)
+		}
+	}
+}
+
+// taskStatusOrder lists task statuses in lifecycle order for progress display.
+var taskStatusOrder = []model.TaskStatus{
+	model.TaskBacklog,
+	model.TaskTodo,
+	model.TaskInProgress,
+	model.TaskInReview,
+	model.TaskDone,
+	model.TaskCancelled,
 }
 
 func rootOrCWD(opts *GlobalOptions) string {
