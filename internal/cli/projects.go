@@ -179,11 +179,12 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 }
 
 type projectSummary struct {
-	ID       string   `json:"id"`
-	Title    string   `json:"title"`
-	Status   string   `json:"status"`
-	Priority *int     `json:"priority,omitempty"`
-	Areas    []string `json:"areas,omitempty"`
+	ID         string         `json:"id"`
+	Title      string         `json:"title"`
+	Status     string         `json:"status"`
+	Priority   *int           `json:"priority,omitempty"`
+	Areas      []string       `json:"areas,omitempty"`
+	TaskCounts map[string]int `json:"task_counts"`
 }
 
 // listOrder returns the successfully decoded projects sorted for display:
@@ -223,11 +224,12 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 	}{Projects: []projectSummary{}}
 	for _, p := range ordered {
 		out.Projects = append(out.Projects, projectSummary{
-			ID:       p.Doc.Project.ID,
-			Title:    p.Doc.Project.Title,
-			Status:   string(p.Doc.Project.Status),
-			Priority: p.Doc.Project.Priority,
-			Areas:    p.Doc.Project.Areas,
+			ID:         p.Doc.Project.ID,
+			Title:      p.Doc.Project.Title,
+			Status:     string(p.Doc.Project.Status),
+			Priority:   p.Doc.Project.Priority,
+			Areas:      p.Doc.Project.Areas,
+			TaskCounts: taskCounts(p.Doc),
 		})
 	}
 	enc := json.NewEncoder(w)
@@ -238,11 +240,15 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 
 func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
 	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED")
+	// PROGRESS is last so its multibyte bar cannot skew tabwriter's alignment
+	// of the preceding columns.
+	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED\tPROGRESS")
 	for _, p := range ordered {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+		c := taskCounts(p.Doc)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
-			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created))
+			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created),
+			miniProgress(c[string(model.TaskDone)], c["total"], 10))
 	}
 	if err := tw.Flush(); err != nil {
 		return err
