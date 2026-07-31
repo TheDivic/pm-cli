@@ -21,8 +21,112 @@ func newProjectsCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Inspect and manage projects",
 	}
 	cmd.AddCommand(newProjectsListCmd(opts))
+	cmd.AddCommand(newProjectsShowCmd(opts))
 	cmd.AddCommand(newProjectsValidateCmd(opts))
 	return cmd
+}
+
+// ---- projects show ----
+
+func newProjectsShowCmd(opts *GlobalOptions) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <project-id>",
+		Short: "Show a project's details",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ws, err := discover.Discover(rootOrCWD(opts))
+			if err != nil {
+				return pmerr.IO("cannot discover projects: %v", err)
+			}
+			var target *discover.Project
+			for i := range ws.Projects {
+				if ws.Projects[i].ID() == args[0] {
+					target = &ws.Projects[i]
+					break
+				}
+			}
+			if target == nil {
+				return pmerr.Usage("no project with id %q under the discovery root", args[0]).WithProject(args[0])
+			}
+			if opts.JSON {
+				return writeProjectShowJSON(cmd.OutOrStdout(), target)
+			}
+			writeProjectShowText(cmd.OutOrStdout(), target)
+			return nil
+		},
+	}
+}
+
+type projectDetail struct {
+	ID           string              `json:"id"`
+	Title        string              `json:"title"`
+	TaskIDPrefix string              `json:"task_id_prefix"`
+	Status       string              `json:"status"`
+	Priority     *int                `json:"priority,omitempty"`
+	Areas        []string            `json:"areas,omitempty"`
+	Created      string              `json:"created"`
+	Started      string              `json:"started,omitempty"`
+	Due          string              `json:"due,omitempty"`
+	Blocked      *model.Blocked      `json:"blocked,omitempty"`
+	Cancellation *model.Cancellation `json:"cancellation,omitempty"`
+	Completed    string              `json:"completed,omitempty"`
+	Path         string              `json:"path"`
+	TaskCounts   map[string]int      `json:"task_counts"`
+}
+
+func taskCounts(doc *model.Document) map[string]int {
+	counts := map[string]int{"total": len(doc.Tasks)}
+	for i := range doc.Tasks {
+		counts[string(doc.Tasks[i].Status)]++
+	}
+	return counts
+}
+
+func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
+	pr := p.Doc.Project
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return enc.Encode(projectDetail{
+		ID:           pr.ID,
+		Title:        pr.Title,
+		TaskIDPrefix: pr.TaskIDPrefix,
+		Status:       string(pr.Status),
+		Priority:     pr.Priority,
+		Areas:        pr.Areas,
+		Created:      pr.Created,
+		Started:      pr.Started,
+		Due:          pr.Due,
+		Blocked:      pr.Blocked,
+		Cancellation: pr.Cancellation,
+		Completed:    pr.Completed,
+		Path:         p.Path,
+		TaskCounts:   taskCounts(p.Doc),
+	})
+}
+
+func writeProjectShowText(w io.Writer, p *discover.Project) {
+	pr := p.Doc.Project
+	field(w, "ID", pr.ID)
+	field(w, "Title", pr.Title)
+	field(w, "Prefix", pr.TaskIDPrefix)
+	field(w, "Status", string(pr.Status))
+	field(w, "Priority", priorityLabel(pr.Priority))
+	if len(pr.Areas) > 0 {
+		field(w, "Areas", joinComma(pr.Areas))
+	}
+	field(w, "Created", pr.Created)
+	optField(w, "Started", pr.Started)
+	optField(w, "Due", pr.Due)
+	optField(w, "Completed", pr.Completed)
+	if pr.Blocked != nil {
+		field(w, "Blocked", fmt.Sprintf("since %s: %s", pr.Blocked.Since, pr.Blocked.Reason))
+	}
+	if pr.Cancellation != nil {
+		field(w, "Cancelled", fmt.Sprintf("%s: %s", pr.Cancellation.Date, pr.Cancellation.Reason))
+	}
+	field(w, "Path", p.Path)
+	field(w, "Tasks", fmt.Sprintf("%d total", taskCounts(p.Doc)["total"]))
 }
 
 func rootOrCWD(opts *GlobalOptions) string {

@@ -41,17 +41,6 @@ func newRootCmd(opts *GlobalOptions, _ clock.Clock) *cobra.Command {
 
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newProjectsCmd(opts))
-	root.AddCommand(newTasksCmd())
+	root.AddCommand(newTasksCmd(opts))
 	return root
-}
-
-// newTasksCmd is the parent for task commands. Subcommands are added in later
-// tasks; invoked on its own it prints help.
-func newTasksCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "tasks",
-		Short: "Inspect and manage tasks",
-		Args:  cobra.NoArgs,
-		RunE:  func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
-	}
 }
