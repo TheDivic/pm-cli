@@ -8,6 +8,14 @@ linters:
     # errcheck, govet, ineffassign, staticcheck, and unused are on by default.
     - misspell
     - revive
+  settings:
+    errcheck:
+      # Writes to terminal streams and tabwriters don't warrant error checks;
+      # real file writes go through the dedicated atomic writer.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
 
 formatters:
   enable:
