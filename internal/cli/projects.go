@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
@@ -42,10 +43,11 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
+			ordered := listOrder(ws)
 			if opts.JSON {
-				return writeProjectsListJSON(cmd.OutOrStdout(), ws)
+				return writeProjectsListJSON(cmd.OutOrStdout(), ordered)
 			}
-			return writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ws)
+			return writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ordered, ws)
 		},
 	}
 }
@@ -59,15 +61,38 @@ type projectSummary struct {
 	Path     string   `json:"path"`
 }
 
-func writeProjectsListJSON(w io.Writer, ws *discover.Workspace) error {
+// listOrder returns the successfully decoded projects sorted for display:
+// prioritized projects first (lowest number = highest priority), projects
+// without a priority last, ties broken by creation date (oldest first) and then
+// project ID for deterministic output.
+func listOrder(ws *discover.Workspace) []*discover.Project {
+	out := make([]*discover.Project, 0, len(ws.Projects))
+	for i := range ws.Projects {
+		if ws.Projects[i].Doc != nil {
+			out = append(out, &ws.Projects[i])
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i].Doc.Project, out[j].Doc.Project
+		if (a.Priority == nil) != (b.Priority == nil) {
+			return a.Priority != nil // prioritized projects sort first
+		}
+		if a.Priority != nil && b.Priority != nil && *a.Priority != *b.Priority {
+			return *a.Priority < *b.Priority
+		}
+		if a.Created != b.Created {
+			return a.Created < b.Created // YYYY-MM-DD sorts chronologically
+		}
+		return a.ID < b.ID
+	})
+	return out
+}
+
+func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 	out := struct {
 		Projects []projectSummary `json:"projects"`
 	}{Projects: []projectSummary{}}
-	for i := range ws.Projects {
-		p := &ws.Projects[i]
-		if p.Doc == nil {
-			continue
-		}
+	for _, p := range ordered {
 		out.Projects = append(out.Projects, projectSummary{
 			ID:       p.Doc.Project.ID,
 			Title:    p.Doc.Project.Title,
@@ -83,17 +108,13 @@ func writeProjectsListJSON(w io.Writer, ws *discover.Workspace) error {
 	return enc.Encode(out)
 }
 
-func writeProjectsListText(stdout, stderr io.Writer, ws *discover.Workspace) error {
+func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
 	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(tw, "ID\tSTATUS\tPRIO\tTITLE\tPATH")
-	for i := range ws.Projects {
-		p := &ws.Projects[i]
-		if p.Doc == nil {
-			continue
-		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+	fmt.Fprintln(tw, "ID\tSTATUS\tPRIO\tCREATED\tTITLE\tPATH")
+	for _, p := range ordered {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			p.Doc.Project.ID, p.Doc.Project.Status, priorityLabel(p.Doc.Project.Priority),
-			p.Doc.Project.Title, p.Path)
+			dateLabel(p.Doc.Project.Created), p.Doc.Project.Title, p.Path)
 	}
 	if err := tw.Flush(); err != nil {
 		return err
@@ -242,4 +263,11 @@ func priorityLabel(p *int) string {
 		return "-"
 	}
 	return fmt.Sprintf("%d", *p)
+}
+
+func dateLabel(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
 }

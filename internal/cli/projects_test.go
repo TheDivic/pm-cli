@@ -82,6 +82,47 @@ func TestProjectsListJSON(t *testing.T) {
 	}
 }
 
+func listProjectFile(id, prio, created string) string {
+	p := "schema-version: 1\n\nproject:\n  id: " + id + "\n  title: " + id + "\n  task-id-prefix: " + id[:1]
+	p += "\n  status: idea\n"
+	if prio != "" {
+		p += "  priority: " + prio + "\n"
+	}
+	p += "  created: \"" + created + "\"\n\ntasks: []\n"
+	return p
+}
+
+func TestProjectsListSortOrder(t *testing.T) {
+	root := t.TempDir()
+	// Same priority, different created; a lower priority; and no priority.
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFile("a", "1", "2026-02-01"))
+	writeFile(t, filepath.Join(root, "c.tasks.yaml"), listProjectFile("c", "1", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFile("b", "2", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "z.tasks.yaml"), listProjectFile("z", "", "2026-01-01"))
+
+	code, stdout, _ := run("--json", "--root", root, "projects", "list")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	var out struct {
+		Projects []struct {
+			ID string `json:"id"`
+		} `json:"projects"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+	var got []string
+	for _, p := range out.Projects {
+		got = append(got, p.ID)
+	}
+	// c (p1, Jan) < a (p1, Feb) < b (p2) < z (no priority).
+	want := []string{"c", "a", "b", "z"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+}
+
 func TestProjectsValidateValid(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
