@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"text/tabwriter"
 
@@ -15,6 +16,10 @@ import (
 	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
 	"github.com/TheDivic/plaintext-tasks/internal/validate"
 )
+
+// rootEnvVar names the environment variable that supplies a default discovery
+// root when --root is not given.
+const rootEnvVar = "PM_ROOT"
 
 func newProjectsCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	cmd := &cobra.Command{
@@ -155,11 +160,16 @@ var taskStatusOrder = []model.TaskStatus{
 	model.TaskCancelled,
 }
 
+// rootOrCWD resolves the discovery root: the --root flag takes precedence, then
+// the PM_ROOT environment variable, then the current working directory.
 func rootOrCWD(opts *GlobalOptions) string {
-	if opts.Root == "" {
-		return "."
+	if opts.Root != "" {
+		return opts.Root
 	}
-	return opts.Root
+	if env := os.Getenv(rootEnvVar); env != "" {
+		return env
+	}
+	return "."
 }
 
 // ---- projects list ----

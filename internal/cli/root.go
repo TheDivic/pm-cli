@@ -35,7 +35,7 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	root.CompletionOptions.DisableDefaultCmd = true
 
 	pf := root.PersistentFlags()
-	pf.StringVar(&opts.Root, "root", "", "discovery root (default: current directory)")
+	pf.StringVar(&opts.Root, "root", "", "discovery root (default: $PM_ROOT or current directory)")
 	pf.BoolVar(&opts.JSON, "json", false, "emit machine-readable JSON")
 	pf.BoolVar(&opts.NoIgnore, "no-ignore", false, "include .gitignored paths in discovery")
 
