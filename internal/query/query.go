@@ -5,6 +5,8 @@
 package query
 
 import (
+	"sort"
+
 	"github.com/TheDivic/plaintext-tasks/internal/discover"
 	"github.com/TheDivic/plaintext-tasks/internal/model"
 )
@@ -87,6 +89,37 @@ func (f TaskFilter) match(r TaskRef) bool {
 		return false
 	}
 	return true
+}
+
+// statusRank orders task statuses for list display: active work first, with
+// in-review ahead of in-progress since it is closer to completion, then
+// upcoming (todo, backlog), then closed (done, cancelled).
+func statusRank(s model.TaskStatus) int {
+	switch s {
+	case model.TaskInReview:
+		return 0
+	case model.TaskInProgress:
+		return 1
+	case model.TaskTodo:
+		return 2
+	case model.TaskBacklog:
+		return 3
+	case model.TaskDone:
+		return 4
+	case model.TaskCancelled:
+		return 5
+	default:
+		return 6
+	}
+}
+
+// SortForList stably orders refs by status (active work first), preserving the
+// incoming file order within each status. File order is the task's priority, so
+// no further tiebreak is needed.
+func SortForList(refs []TaskRef) {
+	sort.SliceStable(refs, func(i, j int) bool {
+		return statusRank(refs[i].Task.Status) < statusRank(refs[j].Task.Status)
+	})
 }
 
 // Find returns the ref for a task by its global ID, or nil if not found.

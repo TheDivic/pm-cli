@@ -107,6 +107,27 @@ func TestFlattenPreservesOrder(t *testing.T) {
 	}
 }
 
+func TestSortForList(t *testing.T) {
+	refs := []TaskRef{
+		mk("dm-001", "todo", "", "", nil, false),
+		mk("dm-002", "done", "", "", nil, false),
+		mk("dm-003", "in-progress", "", "", nil, false),
+		mk("dm-004", "todo", "", "", nil, false),
+		mk("dm-005", "in-review", "", "", nil, false),
+		mk("dm-006", "backlog", "", "", nil, false),
+	}
+	SortForList(refs)
+	got := ids(refs)
+	// in-review, in-progress, then todo (file order dm-001 before dm-004),
+	// backlog, done.
+	want := []string{"dm-005", "dm-003", "dm-001", "dm-004", "dm-006", "dm-002"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("order = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestFind(t *testing.T) {
 	refs := []TaskRef{mk("dm-001", "todo", "", "", nil, false)}
 	if Find(refs, "dm-001") == nil {

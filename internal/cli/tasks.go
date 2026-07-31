@@ -57,6 +57,7 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 			f.DueBefore = dueBefore
 			f.DueOn = dueOn
 			result := query.Filter(refs, f)
+			query.SortForList(result)
 
 			if opts.JSON {
 				return writeTasksJSON(cmd.OutOrStdout(), result)
@@ -118,7 +119,7 @@ func writeTasksText(w io.Writer, refs []query.TaskRef) {
 	tw := tabwriter.NewWriter(w, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(tw, "ID\tSTATUS\tPROJECT\tTITLE")
 	for _, r := range refs {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Task.ID, r.Task.Status, r.Project.ID, r.Task.Title)
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", r.Task.ID, r.Task.Status, r.Project.Title, r.Task.Title)
 	}
 	_ = tw.Flush()
 }
