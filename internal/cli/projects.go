@@ -9,13 +9,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/TheDivic/plaintext-tasks/internal/clock"
 	"github.com/TheDivic/plaintext-tasks/internal/discover"
 	"github.com/TheDivic/plaintext-tasks/internal/model"
 	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
 	"github.com/TheDivic/plaintext-tasks/internal/validate"
 )
 
-func newProjectsCmd(opts *GlobalOptions) *cobra.Command {
+func newProjectsCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "projects",
 		Short: "Inspect and manage projects",
@@ -24,6 +25,9 @@ func newProjectsCmd(opts *GlobalOptions) *cobra.Command {
 	cmd.AddCommand(newProjectsShowCmd(opts))
 	cmd.AddCommand(newProjectsValidateCmd(opts))
 	cmd.AddCommand(newProjectsFormatCmd(opts))
+	cmd.AddCommand(newProjectsCreateCmd(opts, clk))
+	cmd.AddCommand(newProjectsEditCmd(opts))
+	cmd.AddCommand(newProjectsStatusCmd(opts, clk))
 	return cmd
 }
 

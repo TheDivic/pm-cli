@@ -8,19 +8,25 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/TheDivic/plaintext-tasks/internal/clock"
 	"github.com/TheDivic/plaintext-tasks/internal/discover"
 	"github.com/TheDivic/plaintext-tasks/internal/model"
 	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
 	"github.com/TheDivic/plaintext-tasks/internal/query"
 )
 
-func newTasksCmd(opts *GlobalOptions) *cobra.Command {
+func newTasksCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tasks",
 		Short: "Inspect and manage tasks",
 	}
 	cmd.AddCommand(newTasksListCmd(opts))
 	cmd.AddCommand(newTasksShowCmd(opts))
+	cmd.AddCommand(newTasksAddCmd(opts, clk))
+	cmd.AddCommand(newTasksEditCmd(opts))
+	cmd.AddCommand(newTasksStatusCmd(opts, clk))
+	cmd.AddCommand(newTasksBlockCmd(opts, clk))
+	cmd.AddCommand(newTasksUnblockCmd(opts))
 	return cmd
 }
 
