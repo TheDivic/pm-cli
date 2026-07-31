@@ -161,22 +161,89 @@ func rootOrCWD(opts *GlobalOptions) string {
 // ---- projects list ----
 
 func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
-	return &cobra.Command{
+	var f projectFilter
+	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List discovered projects",
+		Short: "List discovered projects, with optional filters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ws, err := discover.Discover(rootOrCWD(opts))
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
-			ordered := listOrder(ws)
+			ordered := filterProjects(listOrder(ws), f)
 			if opts.JSON {
 				return writeProjectsListJSON(cmd.OutOrStdout(), ordered)
 			}
 			return writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ordered, ws)
 		},
 	}
+	flags := cmd.Flags()
+	flags.StringSliceVar(&f.Statuses, "status", nil, "filter by project status (repeatable)")
+	flags.IntSliceVar(&f.Priorities, "priority", nil, "filter by priority (repeatable)")
+	flags.StringSliceVar(&f.Areas, "area", nil, "filter by area (repeatable)")
+	return cmd
+}
+
+// projectFilter is a conjunction of project filters; slice fields are
+// disjunctions, matching the tasks list semantics.
+type projectFilter struct {
+	Statuses   []string
+	Priorities []int
+	Areas      []string
+}
+
+func filterProjects(projects []*discover.Project, f projectFilter) []*discover.Project {
+	if len(f.Statuses) == 0 && len(f.Priorities) == 0 && len(f.Areas) == 0 {
+		return projects
+	}
+	out := make([]*discover.Project, 0, len(projects))
+	for _, p := range projects {
+		if f.match(&p.Doc.Project) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func (f projectFilter) match(p *model.Project) bool {
+	if len(f.Statuses) > 0 && !containsString(f.Statuses, string(p.Status)) {
+		return false
+	}
+	if len(f.Priorities) > 0 && (p.Priority == nil || !containsInt(f.Priorities, *p.Priority)) {
+		return false
+	}
+	if len(f.Areas) > 0 && !overlapString(f.Areas, p.Areas) {
+		return false
+	}
+	return true
+}
+
+func containsString(set []string, v string) bool {
+	for _, s := range set {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+func containsInt(set []int, v int) bool {
+	for _, n := range set {
+		if n == v {
+			return true
+		}
+	}
+	return false
+}
+
+func overlapString(want, have []string) bool {
+	for _, w := range want {
+		if containsString(have, w) {
+			return true
+		}
+	}
+	return false
 }
 
 type projectSummary struct {

@@ -99,9 +99,10 @@ func listProjectFile(id, status, prio, created string) string {
 	return p
 }
 
-func listIDs(t *testing.T, root string) []string {
+func listIDs(t *testing.T, root string, extra ...string) []string {
 	t.Helper()
-	code, stdout, stderr := run("--json", "--root", root, "projects", "list")
+	args := append([]string{"--json", "--root", root, "projects", "list"}, extra...)
+	code, stdout, stderr := run(args...)
 	if code != 0 {
 		t.Fatalf("exit = %d (stderr: %s)", code, stderr)
 	}
@@ -149,6 +150,43 @@ func TestProjectsListInProgressFirst(t *testing.T) {
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("order = %v, want %v", got, want)
 	}
+}
+
+func projFileArea(id, status, prio, area string) string {
+	s := "schema-version: 1\n\nproject:\n  id: " + id + "\n  title: " + id +
+		"\n  task-id-prefix: " + id[:1] + "\n  status: " + status + "\n"
+	if prio != "" {
+		s += "  priority: " + prio + "\n"
+	}
+	s += "  areas:\n    - " + area + "\n  created: \"2026-07-31\"\n"
+	if status == "in-progress" {
+		s += "  started: \"2026-07-31\"\n"
+	}
+	return s + "\ntasks: []\n"
+}
+
+func TestProjectsListFilters(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), projFileArea("a", "idea", "1", "alpha"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), projFileArea("b", "done", "", "beta"))
+	writeFile(t, filepath.Join(root, "c.tasks.yaml"), projFileArea("c", "idea", "2", "alpha"))
+
+	eq := func(got, want []string) {
+		t.Helper()
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+	// idea status: a (prio 1) then c (prio 2).
+	eq(listIDs(t, root, "--status", "idea"), []string{"a", "c"})
+	// priority 1 only.
+	eq(listIDs(t, root, "--priority", "1"), []string{"a"})
+	// area beta only.
+	eq(listIDs(t, root, "--area", "beta"), []string{"b"})
+	// AND across filters: idea AND priority 2 -> c.
+	eq(listIDs(t, root, "--status", "idea", "--priority", "2"), []string{"c"})
+	// OR within a filter: priority 1 or 2 -> a, c.
+	eq(listIDs(t, root, "--priority", "1", "--priority", "2"), []string{"a", "c"})
 }
 
 func TestProjectsValidateValid(t *testing.T) {
