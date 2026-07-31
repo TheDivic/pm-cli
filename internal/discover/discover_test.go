@@ -3,6 +3,7 @@ package discover
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -133,6 +134,34 @@ func TestDiscoverFlagsFilenameMismatch(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected a filename-stem mismatch finding, got: %+v", ws.Projects[0].Findings)
+	}
+}
+
+func TestDiscoverChecksAreaExistence(t *testing.T) {
+	root := t.TempDir()
+	write(t, filepath.Join(root, "areas", "known.md"), "# known\n")
+	content := "schema-version: 1\n\nproject:\n  id: p\n  title: P\n  task-id-prefix: pp\n" +
+		"  status: idea\n  areas:\n    - known\n    - missing\n  created: \"2026-07-31\"\n\ntasks: []\n"
+	write(t, filepath.Join(root, "p", "p.tasks.yaml"), content)
+
+	ws, err := Discover(root, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ws.Projects) != 1 {
+		t.Fatalf("expected 1 project, got %d", len(ws.Projects))
+	}
+	var missingFlagged bool
+	for _, f := range ws.Projects[0].Findings {
+		if strings.Contains(f.Message, "known") {
+			t.Fatalf("existing area should not be flagged: %+v", ws.Projects[0].Findings)
+		}
+		if strings.Contains(f.Message, "missing") {
+			missingFlagged = true
+		}
+	}
+	if !missingFlagged {
+		t.Fatalf("expected a finding for the missing area file: %+v", ws.Projects[0].Findings)
 	}
 }
 
