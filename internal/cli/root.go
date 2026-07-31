@@ -19,9 +19,9 @@ type GlobalOptions struct {
 }
 
 // newRootCmd builds the pm command tree. The clock is threaded in so that
-// mutation commands added in later tasks take their lifecycle dates from an
-// injectable source rather than the machine date.
-func newRootCmd(opts *GlobalOptions, _ clock.Clock) *cobra.Command {
+// mutation commands take their lifecycle dates from an injectable source rather
+// than the machine date.
+func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "pm",
 		Short: "Plaintext Tasks: manage projects and tasks stored as *.tasks.yaml files",
@@ -40,7 +40,7 @@ func newRootCmd(opts *GlobalOptions, _ clock.Clock) *cobra.Command {
 	pf.BoolVar(&opts.NoIgnore, "no-ignore", false, "include .gitignored paths in discovery")
 
 	root.AddCommand(newVersionCmd())
-	root.AddCommand(newProjectsCmd(opts))
-	root.AddCommand(newTasksCmd(opts))
+	root.AddCommand(newProjectsCmd(opts, clk))
+	root.AddCommand(newTasksCmd(opts, clk))
 	return root
 }
