@@ -2,6 +2,16 @@ GO  ?= go
 BIN := bin/pm
 PKG := ./...
 
+# Build metadata injected into the version command.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+MODULE  := github.com/TheDivic/plaintext-tasks/internal/cli
+LDFLAGS := -s -w \
+	-X $(MODULE).version=$(VERSION) \
+	-X $(MODULE).commit=$(COMMIT) \
+	-X $(MODULE).date=$(DATE)
+
 .PHONY: all check fmt fmt-check vet lint test test-race build tidy clean
 
 # Default: run the full gate, then build.
@@ -33,7 +43,7 @@ test-race:
 	$(GO) test -race $(PKG)
 
 build:
-	$(GO) build -o $(BIN) ./cmd/pm
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/pm
 
 tidy:
 	$(GO) mod tidy

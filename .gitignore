@@ -11,3 +11,6 @@ coverage.*
 
 # Stray root build artifact (canonical output is bin/pm)
 /pm
+
+# GoReleaser output
+/dist/

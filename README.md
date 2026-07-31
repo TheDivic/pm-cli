@@ -29,9 +29,38 @@ The behavior contract lives in the Plaintext Brain knowledge base, project
 
 Our build plan lives in this repo: [`implementation-plan.md`](implementation-plan.md).
 
+## Install
+
+`pm` is a single self-contained binary with no runtime dependencies.
+
+**Prebuilt binary** — download the archive for your OS/arch from the
+[releases page](https://github.com/TheDivic/plaintext-tasks/releases), extract
+it, and put `pm` on your `PATH`.
+
+**With Go** (1.26+):
+
+```sh
+go install github.com/TheDivic/plaintext-tasks/cmd/pm@latest
+```
+
+**From source:**
+
+```sh
+git clone https://github.com/TheDivic/plaintext-tasks
+cd plaintext-tasks
+make build            # produces ./bin/pm with version metadata baked in
+```
+
+Verify the install and set a default discovery root so you can omit `--root`:
+
+```sh
+pm version
+export PM_ROOT=/path/to/your/tasks   # optional; --root overrides it
+```
+
 ## Requirements
 
-- Go 1.26 or newer.
+- To build from source: Go 1.26 or newer. Prebuilt binaries need no runtime.
 
 ## Development
 

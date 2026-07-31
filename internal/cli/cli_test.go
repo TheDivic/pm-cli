@@ -18,8 +18,8 @@ func TestVersionSucceeds(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr: %s)", code, stderr)
 	}
-	if strings.TrimSpace(stdout) != version {
-		t.Fatalf("stdout = %q, want %q", strings.TrimSpace(stdout), version)
+	if !strings.Contains(stdout, version) || !strings.Contains(stdout, "pm ") {
+		t.Fatalf("version output %q missing version %q", stdout, version)
 	}
 }
 
