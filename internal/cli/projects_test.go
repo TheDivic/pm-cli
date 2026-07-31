@@ -82,27 +82,25 @@ func TestProjectsListJSON(t *testing.T) {
 	}
 }
 
-func listProjectFile(id, prio, created string) string {
+func listProjectFile(id, status, prio, created string) string {
 	p := "schema-version: 1\n\nproject:\n  id: " + id + "\n  title: " + id + "\n  task-id-prefix: " + id[:1]
-	p += "\n  status: idea\n"
+	p += "\n  status: " + status + "\n"
 	if prio != "" {
 		p += "  priority: " + prio + "\n"
 	}
-	p += "  created: \"" + created + "\"\n\ntasks: []\n"
+	p += "  created: \"" + created + "\"\n"
+	if status == "in-progress" {
+		p += "  started: \"" + created + "\"\n"
+	}
+	p += "\ntasks: []\n"
 	return p
 }
 
-func TestProjectsListSortOrder(t *testing.T) {
-	root := t.TempDir()
-	// Same priority, different created; a lower priority; and no priority.
-	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFile("a", "1", "2026-02-01"))
-	writeFile(t, filepath.Join(root, "c.tasks.yaml"), listProjectFile("c", "1", "2026-01-01"))
-	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFile("b", "2", "2026-01-01"))
-	writeFile(t, filepath.Join(root, "z.tasks.yaml"), listProjectFile("z", "", "2026-01-01"))
-
-	code, stdout, _ := run("--json", "--root", root, "projects", "list")
+func listIDs(t *testing.T, root string) []string {
+	t.Helper()
+	code, stdout, stderr := run("--json", "--root", root, "projects", "list")
 	if code != 0 {
-		t.Fatalf("exit = %d", code)
+		t.Fatalf("exit = %d (stderr: %s)", code, stderr)
 	}
 	var out struct {
 		Projects []struct {
@@ -116,8 +114,35 @@ func TestProjectsListSortOrder(t *testing.T) {
 	for _, p := range out.Projects {
 		got = append(got, p.ID)
 	}
+	return got
+}
+
+func TestProjectsListSortOrder(t *testing.T) {
+	root := t.TempDir()
+	// Same status; same priority with different created; a lower priority; none.
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFile("a", "idea", "1", "2026-02-01"))
+	writeFile(t, filepath.Join(root, "c.tasks.yaml"), listProjectFile("c", "idea", "1", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFile("b", "idea", "2", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "z.tasks.yaml"), listProjectFile("z", "idea", "", "2026-01-01"))
+
+	got := listIDs(t, root)
 	// c (p1, Jan) < a (p1, Feb) < b (p2) < z (no priority).
 	want := []string{"c", "a", "b", "z"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+}
+
+func TestProjectsListInProgressFirst(t *testing.T) {
+	root := t.TempDir()
+	// An in-progress project with no priority must precede a prioritized idea.
+	writeFile(t, filepath.Join(root, "prog.tasks.yaml"), listProjectFile("prog", "in-progress", "", "2026-03-01"))
+	writeFile(t, filepath.Join(root, "idea.tasks.yaml"), listProjectFile("idea", "idea", "1", "2026-01-01"))
+	// A second in-progress with a priority sorts ahead of the unprioritized one.
+	writeFile(t, filepath.Join(root, "prog2.tasks.yaml"), listProjectFile("prog2", "in-progress", "1", "2026-05-01"))
+
+	got := listIDs(t, root)
+	want := []string{"prog2", "prog", "idea"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("order = %v, want %v", got, want)
 	}

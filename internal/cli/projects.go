@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TheDivic/plaintext-tasks/internal/discover"
+	"github.com/TheDivic/plaintext-tasks/internal/model"
 	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
 	"github.com/TheDivic/plaintext-tasks/internal/validate"
 )
@@ -61,8 +62,9 @@ type projectSummary struct {
 }
 
 // listOrder returns the successfully decoded projects sorted for display:
-// prioritized projects first (lowest number = highest priority), projects
-// without a priority last, ties broken by creation date (oldest first) and then
+// in-progress projects first, then all others. Within each group, prioritized
+// projects come first (lowest number = highest priority), projects without a
+// priority last, with ties broken by creation date (oldest first) and then
 // project ID for deterministic output.
 func listOrder(ws *discover.Workspace) []*discover.Project {
 	out := make([]*discover.Project, 0, len(ws.Projects))
@@ -73,6 +75,9 @@ func listOrder(ws *discover.Workspace) []*discover.Project {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i].Doc.Project, out[j].Doc.Project
+		if ai, bi := a.Status == model.ProjectInProgress, b.Status == model.ProjectInProgress; ai != bi {
+			return ai // in-progress projects sort first
+		}
 		if (a.Priority == nil) != (b.Priority == nil) {
 			return a.Priority != nil // prioritized projects sort first
 		}
