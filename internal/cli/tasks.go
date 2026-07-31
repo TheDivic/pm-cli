@@ -38,11 +38,21 @@ func loadRefs(opts *GlobalOptions) ([]query.TaskRef, *discover.Workspace, error)
 	return query.Flatten(ws), ws, nil
 }
 
+// openTaskStatuses are the non-terminal statuses shown by tasks list by
+// default (done and cancelled are hidden unless --all or an explicit --status).
+var openTaskStatuses = []string{
+	string(model.TaskBacklog),
+	string(model.TaskTodo),
+	string(model.TaskInProgress),
+	string(model.TaskInReview),
+}
+
 // ---- tasks list ----
 
 func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 	var (
 		f         query.TaskFilter
+		all       bool
 		blocked   bool
 		dueBefore string
 		dueOn     string
@@ -62,6 +72,11 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 			f.HasParent = cmd.Flags().Changed("parent")
 			f.DueBefore = dueBefore
 			f.DueOn = dueOn
+			// By default the overview hides terminal tasks; an explicit --status
+			// or --all opts back in.
+			if !all && !cmd.Flags().Changed("status") {
+				f.Statuses = openTaskStatuses
+			}
 			result := query.Filter(refs, f)
 			query.SortForList(result)
 
@@ -73,6 +88,7 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	flags.BoolVarP(&all, "all", "a", false, "include done and cancelled tasks")
 	flags.StringSliceVar(&f.Projects, "project", nil, "filter by project ID (repeatable)")
 	flags.StringSliceVar(&f.Statuses, "status", nil, "filter by task status (repeatable)")
 	flags.StringSliceVar(&f.Tags, "tag", nil, "filter by tag (repeatable)")
