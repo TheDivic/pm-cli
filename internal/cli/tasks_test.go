@@ -108,8 +108,8 @@ func TestProjectsShow(t *testing.T) {
 	if !strings.Contains(stdout, "demo") || !strings.Contains(stdout, "demo/demo.tasks.yaml") {
 		t.Fatalf("show output missing id/path: %q", stdout)
 	}
-	if !strings.Contains(stdout, "3 total") {
-		t.Fatalf("show output missing task count: %q", stdout)
+	if !strings.Contains(stdout, "1/3 done") {
+		t.Fatalf("show output missing progress bar: %q", stdout)
 	}
 	// Per-status breakdown: one todo, one in-progress, one done.
 	for _, want := range []string{"todo:", "in-progress:", "done:"} {

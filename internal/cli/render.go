@@ -22,3 +22,15 @@ func optField(w io.Writer, label, value string) {
 }
 
 func joinComma(v []string) string { return strings.Join(v, ", ") }
+
+// progressBar renders a fixed-width completion bar for done out of total. The
+// caller guarantees total > 0.
+func progressBar(done, total, width int) string {
+	filled := (done*width + total/2) / total // rounded
+	if filled > width {
+		filled = width
+	}
+	pct := (done*100 + total/2) / total
+	return fmt.Sprintf("[%s%s] %d%% (%d/%d done)",
+		strings.Repeat("█", filled), strings.Repeat("░", width-filled), pct, done, total)
+}

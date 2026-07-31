@@ -127,7 +127,12 @@ func writeProjectShowText(w io.Writer, p *discover.Project) {
 	}
 	field(w, "Path", p.Path)
 	counts := taskCounts(p.Doc)
-	field(w, "Tasks", fmt.Sprintf("%d total", counts["total"]))
+	total := counts["total"]
+	if total == 0 {
+		field(w, "Tasks", "none")
+		return
+	}
+	field(w, "Tasks", progressBar(counts[string(model.TaskDone)], total, 20))
 	for _, s := range taskStatusOrder {
 		if n := counts[string(s)]; n > 0 {
 			fmt.Fprintf(w, "  %-13s%d\n", string(s)+":", n)
