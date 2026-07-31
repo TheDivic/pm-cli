@@ -144,7 +144,7 @@ func writeTasksText(w io.Writer, refs []query.TaskRef) {
 	fmt.Fprintln(tw, "ID\tSTATUS\tPRIO\tPROJECT\tTITLE")
 	for _, r := range refs {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-			r.Task.ID, r.Task.Status, priorityLabel(r.Task.Priority), r.Project.Title, r.Task.Title)
+			r.Task.ID, r.Task.Status, priorityLabel(r.Task.Priority), r.Project.ID, r.Task.Title)
 	}
 	_ = tw.Flush()
 }

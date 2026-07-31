@@ -42,5 +42,6 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newProjectsCmd(opts, clk))
 	root.AddCommand(newTasksCmd(opts, clk))
+	root.AddCommand(newTagsCmd(opts))
 	return root
 }
