@@ -44,7 +44,7 @@ func newProjectsShowCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Show a project's details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws, err := discover.Discover(rootOrCWD(opts))
+			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
@@ -181,7 +181,7 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "List discovered projects, with optional filters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			ws, err := discover.Discover(rootOrCWD(opts))
+			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
@@ -357,7 +357,7 @@ func newProjectsValidateCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Validate discovered project task files",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws, err := discover.Discover(rootOrCWD(opts))
+			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}

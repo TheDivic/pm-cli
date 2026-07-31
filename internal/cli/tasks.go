@@ -31,7 +31,7 @@ func newTasksCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 }
 
 func loadRefs(opts *GlobalOptions) ([]query.TaskRef, *discover.Workspace, error) {
-	ws, err := discover.Discover(rootOrCWD(opts))
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 	if err != nil {
 		return nil, nil, pmerr.IO("cannot discover projects: %v", err)
 	}

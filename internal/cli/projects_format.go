@@ -29,7 +29,7 @@ func newProjectsFormatCmd(opts *GlobalOptions) *cobra.Command {
 				return pmerr.Usage("provide a project id or --all")
 			}
 
-			ws, err := discover.Discover(rootOrCWD(opts))
+			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}

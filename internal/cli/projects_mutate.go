@@ -73,7 +73,7 @@ func createProject(cmd *cobra.Command, opts *GlobalOptions, target string, doc *
 	}
 
 	// Enforce project-ID and prefix uniqueness across the discovery root.
-	ws, err := discover.Discover(rootOrCWD(opts))
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 	if err != nil {
 		return pmerr.IO("cannot discover projects: %v", err)
 	}
