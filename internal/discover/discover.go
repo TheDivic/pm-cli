@@ -2,9 +2,8 @@
 // decode and validate pipeline, and reports project-ID and task-ID-prefix
 // conflicts across the discovered set.
 //
-// Scope note: .gitignore filtering (and the global --no-ignore switch) is not
-// yet applied; discovery currently skips only .git and does not follow
-// directory symlinks. Ignore semantics arrive in a later milestone.
+// Discovery honors .gitignore rules from the root downward (unless noIgnore is
+// set), always skips .git, and does not follow directory symlinks.
 package discover
 
 import (
@@ -15,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/TheDivic/plaintext-tasks/internal/decode"
+	"github.com/TheDivic/plaintext-tasks/internal/ignore"
 	"github.com/TheDivic/plaintext-tasks/internal/model"
 	"github.com/TheDivic/plaintext-tasks/internal/validate"
 )
@@ -62,12 +62,20 @@ type Conflict struct {
 }
 
 // Discover walks root, loads each task file, and records cross-file conflicts.
-// The returned error is only for a root that cannot be walked; per-file
-// problems live on each Project.
-func Discover(root string) (*Workspace, error) {
+// When noIgnore is false, .gitignore rules from the root down exclude matching
+// files and directories. The returned error is only for a root that cannot be
+// walked; per-file problems live on each Project.
+func Discover(root string, noIgnore bool) (*Workspace, error) {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
+	}
+
+	var matcher *ignore.Matcher
+	if !noIgnore {
+		if matcher, err = ignore.New(absRoot); err != nil {
+			return nil, err
+		}
 	}
 
 	ws := &Workspace{Root: absRoot}
@@ -75,13 +83,20 @@ func Discover(root string) (*Workspace, error) {
 		if err != nil {
 			return err
 		}
+		rel, _ := filepath.Rel(absRoot, path)
 		if d.IsDir() {
 			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			if matcher.Ignored(rel, true) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
 		if !strings.HasSuffix(d.Name(), suffix) {
+			return nil
+		}
+		if matcher.Ignored(rel, false) {
 			return nil
 		}
 		ws.Projects = append(ws.Projects, load(absRoot, path))

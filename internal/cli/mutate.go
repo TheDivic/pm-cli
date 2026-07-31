@@ -59,7 +59,7 @@ func reportFindings(stderr io.Writer, path string, findings []validate.Finding) 
 
 // resolveProject finds a discovered project by ID and returns its file path.
 func resolveProject(opts *GlobalOptions, id string) (string, error) {
-	ws, err := discover.Discover(rootOrCWD(opts))
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 	if err != nil {
 		return "", pmerr.IO("cannot discover projects: %v", err)
 	}
@@ -73,7 +73,7 @@ func resolveProject(opts *GlobalOptions, id string) (string, error) {
 
 // resolveTask finds the project file that contains the given task ID.
 func resolveTask(opts *GlobalOptions, taskID string) (path, projectID string, err error) {
-	ws, err := discover.Discover(rootOrCWD(opts))
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 	if err != nil {
 		return "", "", pmerr.IO("cannot discover projects: %v", err)
 	}
