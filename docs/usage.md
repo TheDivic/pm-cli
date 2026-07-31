@@ -1,0 +1,135 @@
+# `pm` usage guide
+
+`pm` reads, validates, queries, formats, and safely mutates `*.tasks.yaml`
+project files. It is non-interactive: every command takes what it needs from
+arguments, flags, or standard input, and never opens a prompt.
+
+The normative contract lives in the Plaintext Brain knowledge base
+(`project-task-format.md`, `cli-specification.md`). This guide is a practical
+reference.
+
+## Global options
+
+```
+pm [--root <path>] [--json] [--no-ignore] <command> [arguments]
+```
+
+- `--root <path>` — discovery root. If omitted, `pm` uses `PM_ROOT`, then the
+  current working directory. Set `export PM_ROOT=/path/to/tasks` to drop the
+  flag.
+- `--json` — machine-readable output for agents and automation. Successful
+  results go to stdout; errors go to stderr.
+- `--no-ignore` — include files that `.gitignore` rules would exclude.
+
+## Discovery
+
+`pm` finds every `*.tasks.yaml` file beneath the root. It honors `.gitignore`
+rules from the root down (nested, negated, and directory patterns), always skips
+`.git`, and never follows directory symlinks. Project IDs and task-ID prefixes
+must be unique across the root. A task ID resolves to its project through its
+prefix, so most commands accept a task ID without a project path.
+
+## Exit codes
+
+| code | meaning |
+|------|---------|
+| 0 | success |
+| 1 | invalid task data, references, or a bad transition |
+| 2 | invalid command syntax or arguments |
+| 3 | I/O, locking, or unexpected internal error |
+
+## Projects
+
+```sh
+pm projects list [--status s]... [--priority n]... [--area a]...
+pm projects show <project-id>
+pm projects validate [<project-id> | --all]
+pm projects format [<project-id> | --all]
+pm projects create --id <id> --title <text> --task-id-prefix <prefix> \
+    [--path <file>] [--status <s>] [--priority <n>] [--due <date>] [--area <a>]...
+pm projects edit <project-id> [--title <t>] [--priority <n> | --clear-priority] \
+    [--due <date> | --clear-due] [--add-area <a>]... [--remove-area <a>]...
+pm projects status <project-id> <status> [--reason <sentence>]
+```
+
+- **list** — in-progress projects first, then others; within a group by
+  priority (lowest first, unset last), creation date, then ID. Columns: ID,
+  title, status, priority, creation date, and a completion progress bar. JSON
+  adds per-status task counts.
+- **show** — full detail including areas, dates, blocking/cancellation, the
+  task-file path, and a per-status task breakdown.
+- **validate** — checks the file(s) and report every problem in one run.
+- **format** — rewrite in canonical form (idempotent); rejects invalid files
+  without writing. Requires a project ID or `--all`.
+- **status** — `blocked` and `cancelled` require `--reason`; entering
+  `in-progress` sets `started` once; `done` sets `completed`; leaving `blocked`
+  clears the record.
+
+```sh
+pm projects create --id website --title "Website" --task-id-prefix web --status in-progress
+pm projects list --status in-progress --priority 1
+pm projects status website blocked --reason "waiting on brand assets"
+```
+
+## Tasks
+
+```sh
+pm tasks list [-a|--all] [--project p]... [--status s]... [--tag t]... [--area a]... \
+    [--parent <task-id>] [--blocked] [--due-before <date>] [--due-on <date>]
+pm tasks show <task-id>
+pm tasks add --project <project-id> --title <text> \
+    [--description-file <file|->] [--status <s>] [--priority <n>] \
+    [--parent <task-id>] [--due <date>] [--tag <t>]...
+pm tasks edit <task-id> [--title <t>] [--description-file <file|->] \
+    [--priority <n> | --clear-priority] [--due <date> | --clear-due] \
+    [--add-tag <t>]... [--remove-tag <t>]... [--parent <id> | --clear-parent]
+pm tasks status <task-id> <status> [--reason <sentence>]
+pm tasks block <task-id> --reason <sentence> [--task <task-id>]...
+pm tasks unblock <task-id>
+```
+
+- **list** — grouped by status (in-review, in-progress, todo, backlog, done,
+  cancelled); within a group by priority then file order. Hides `done` and
+  `cancelled` by default; `-a`/`--all` includes them, and an explicit `--status`
+  overrides. Filters combine with AND; repeated values combine with OR.
+- **add** — assigns the next task ID and the `created` date. Default status is
+  `todo`. `--description-file -` reads the description from standard input.
+- **status** — manages lifecycle dates and the mutually exclusive terminal and
+  blocking fields. `cancelled` requires `--reason`.
+- **block / unblock** — record or remove a blocking condition without changing
+  the task status.
+
+```sh
+pm tasks add --project website --title "Design the header" --priority 1 --tag design
+echo "Acceptance: passes Lighthouse." | pm tasks add --project website --title "Audit perf" --description-file -
+pm tasks status web-001 in-progress
+pm tasks block web-002 --reason "depends on the header" --task web-001
+pm tasks list --project website            # open work only
+pm tasks list --project website --status done
+```
+
+## Tags
+
+```sh
+pm tags
+```
+
+Lists the distinct tags in use across all tasks with a per-tag usage count,
+most-used first, in human-readable and `--json` form.
+
+## Mutation safety
+
+Every write follows a fixed sequence: lock the target file, read and parse it,
+validate the document, apply one change, validate the result, render canonical
+bytes, and atomically replace the file. Any error before the final write leaves
+the original bytes unchanged, and a per-file lock prevents concurrent commands
+in one checkout from colliding. There is no delete command; retire unfinished
+work by cancelling it.
+
+## Agent and automation use
+
+Pass `--json` to any command for structured output. Errors in JSON mode are a
+single object on stderr with a stable `code`, `message`, and — when available —
+`file`, `project`, `task`, and `field`. Combined with non-zero exit codes, this
+lets an agent perform every operation and react to failures without parsing
+human text.

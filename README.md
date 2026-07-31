@@ -18,6 +18,19 @@ for both people (concise terminal output) and LLM agents (structured `--json`).
   with atomic writes that leave the original file untouched on any failure.
 - Emits a deterministic canonical format so `format` is idempotent.
 
+## Usage
+
+Full command reference and examples: [`docs/usage.md`](docs/usage.md).
+
+```sh
+export PM_ROOT=/path/to/tasks          # optional default discovery root
+pm projects list                       # overview with progress bars
+pm tasks list --project website        # open tasks for one project
+pm tasks add --project website --title "Design the header" --priority 1
+pm tasks status web-001 in-progress
+pm --json tasks list --status todo     # machine-readable output for agents
+```
+
 ## Specifications (normative, frozen)
 
 The behavior contract lives in the Plaintext Brain knowledge base, project
