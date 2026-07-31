@@ -1,0 +1,53 @@
+# GoReleaser configuration for cross-platform pm binaries.
+# Release with: git tag vX.Y.Z && git push --tags  (CI runs goreleaser).
+version: 2
+
+project_name: pm
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pm
+    main: ./cmd/pm
+    binary: pm
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/TheDivic/plaintext-tasks/internal/cli.version={{ .Version }}
+      - -X github.com/TheDivic/plaintext-tasks/internal/cli.commit={{ .ShortCommit }}
+      - -X github.com/TheDivic/plaintext-tasks/internal/cli.date={{ .Date }}
+
+archives:
+  - id: pm
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: false
