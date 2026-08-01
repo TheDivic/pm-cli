@@ -92,6 +92,14 @@ func taskCounts(doc *model.Document) map[string]int {
 	return counts
 }
 
+// countableTotal returns the number of tasks that count toward completion. Every
+// task is expected to end up either done or cancelled, so only cancelled ones
+// are excluded: they are work that will never be finished, and leaving them in
+// the denominator would cap a project below 100% forever.
+func countableTotal(counts map[string]int) int {
+	return counts["total"] - counts[string(model.TaskCancelled)]
+}
+
 func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
 	pr := p.Doc.Project
 	enc := json.NewEncoder(w)
@@ -137,12 +145,18 @@ func writeProjectShowText(w io.Writer, p *discover.Project) {
 	}
 	field(w, "Path", p.Path)
 	counts := taskCounts(p.Doc)
-	total := counts["total"]
-	if total == 0 {
+	cancelled := counts[string(model.TaskCancelled)]
+	countable := countableTotal(counts)
+	switch {
+	case counts["total"] == 0:
 		field(w, "Tasks", "none")
 		return
+	case countable == 0:
+		// Every task was cancelled, so there is no ratio to report.
+		field(w, "Tasks", fmt.Sprintf("none countable (%d cancelled)", cancelled))
+	default:
+		field(w, "Tasks", progressBar(counts[string(model.TaskDone)], countable, cancelled, 20))
 	}
-	field(w, "Tasks", progressBar(counts[string(model.TaskDone)], total, 20))
 	for _, s := range taskStatusOrder {
 		if n := counts[string(s)]; n > 0 {
 			fmt.Fprintf(w, "  %-13s%d\n", string(s)+":", n)
@@ -330,7 +344,7 @@ func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
 			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created),
-			miniProgress(c[string(model.TaskDone)], c["total"], 10))
+			miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
 	}
 	if err := tw.Flush(); err != nil {
 		return err

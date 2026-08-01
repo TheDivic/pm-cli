@@ -203,6 +203,164 @@ func TestProjectsShow(t *testing.T) {
 	}
 }
 
+// projectWithCancelled has one done, one backlog, and two cancelled tasks, so
+// progress is 1/2: backlog counts toward completion, cancelled does not.
+const projectWithCancelled = `schema-version: 1
+
+project:
+  id: demo
+  title: Demo
+  task-id-prefix: dm
+  status: in-progress
+  created: "2026-07-31"
+  started: "2026-07-31"
+
+tasks:
+  - id: dm-001
+    title: Alpha
+    status: done
+    created: "2026-07-31"
+    completed: "2026-07-31"
+  - id: dm-002
+    title: Beta
+    status: backlog
+    created: "2026-07-31"
+  - id: dm-003
+    title: Gamma
+    status: cancelled
+    created: "2026-07-31"
+    cancellation:
+      date: "2026-07-31"
+      reason: Superseded by Alpha.
+  - id: dm-004
+    title: Delta
+    status: cancelled
+    created: "2026-07-31"
+    cancellation:
+      date: "2026-07-31"
+      reason: No longer needed.
+`
+
+// allCancelled has nothing countable, so there is no completion ratio.
+const allCancelled = `schema-version: 1
+
+project:
+  id: dropped
+  title: Dropped
+  task-id-prefix: dr
+  status: idea
+  created: "2026-07-31"
+
+tasks:
+  - id: dr-001
+    title: Alpha
+    status: cancelled
+    created: "2026-07-31"
+    cancellation:
+      date: "2026-07-31"
+      reason: Abandoned.
+  - id: dr-002
+    title: Beta
+    status: cancelled
+    created: "2026-07-31"
+    cancellation:
+      date: "2026-07-31"
+      reason: Abandoned.
+`
+
+func TestProjectsShowExcludesCancelledFromProgress(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithCancelled)
+
+	code, stdout, _ := run("--root", root, "projects", "show", "demo")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	// 1 done out of 2 countable (done + backlog); the two cancelled are outside.
+	if !strings.Contains(stdout, "50% (1/2 done, 2 cancelled)") {
+		t.Fatalf("progress should exclude cancelled but keep backlog: %q", stdout)
+	}
+	// The breakdown still accounts for every task.
+	if !strings.Contains(stdout, "backlog:     1") || !strings.Contains(stdout, "cancelled:   2") {
+		t.Fatalf("show output missing status breakdown: %q", stdout)
+	}
+}
+
+func TestProjectsShowCountsBacklogTowardProgress(t *testing.T) {
+	root := t.TempDir()
+	// One done and one backlog task: backlog is countable, so this is 50%.
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), `schema-version: 1
+
+project:
+  id: demo
+  title: Demo
+  task-id-prefix: dm
+  status: in-progress
+  created: "2026-07-31"
+  started: "2026-07-31"
+
+tasks:
+  - id: dm-001
+    title: Alpha
+    status: done
+    created: "2026-07-31"
+    completed: "2026-07-31"
+  - id: dm-002
+    title: Beta
+    status: backlog
+    created: "2026-07-31"
+`)
+
+	code, stdout, _ := run("--root", root, "projects", "show", "demo")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if !strings.Contains(stdout, "50% (1/2 done)") {
+		t.Fatalf("backlog should count toward progress: %q", stdout)
+	}
+	// With nothing cancelled there is no denominator caveat to report.
+	if strings.Contains(stdout, "cancelled") {
+		t.Fatalf("no cancelled tasks, so none should be mentioned: %q", stdout)
+	}
+}
+
+func TestProjectsListExcludesCancelledFromProgress(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithCancelled)
+
+	code, stdout, _ := run("--root", root, "projects", "list")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if !strings.Contains(stdout, "50%") {
+		t.Fatalf("list progress should exclude cancelled: %q", stdout)
+	}
+}
+
+func TestProjectsAllCancelledHasNoProgressRatio(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "dropped", "dropped.tasks.yaml"), allCancelled)
+
+	code, stdout, _ := run("--root", root, "projects", "show", "dropped")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if !strings.Contains(stdout, "none countable (2 cancelled)") {
+		t.Fatalf("all-cancelled project should report nothing countable: %q", stdout)
+	}
+	if !strings.Contains(stdout, "cancelled:   2") {
+		t.Fatalf("all-cancelled project should still list its tasks: %q", stdout)
+	}
+
+	code, stdout, _ = run("--root", root, "projects", "list")
+	if code != 0 {
+		t.Fatalf("exit = %d", code)
+	}
+	if strings.Contains(stdout, "%") {
+		t.Fatalf("all-cancelled project should show no percentage: %q", stdout)
+	}
+}
+
 func TestProjectsShowUnknownIsUsageError(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)
