@@ -71,6 +71,13 @@ pm version
 export PM_ROOT=/path/to/your/tasks   # optional; --root overrides it
 ```
 
+## Agent use
+
+Pass `--json` to any command for structured output and rely on the exit codes;
+`pm` never prompts. To teach an LLM agent to drive `pm` without reading this
+repository, hand it the portable skill in [`skills/`](skills/README.md) — it
+carries the full command surface, the lifecycle rules, and the file schema.
+
 ## Requirements
 
 - To build from source: Go 1.26 or newer. Prebuilt binaries need no runtime.
