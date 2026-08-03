@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "gopls@claude-code-lsps": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-lsps": {
+      "source": {
+        "source": "github",
+        "repo": "Piebald-AI/claude-code-lsps"
+      }
+    }
+  }
+}
