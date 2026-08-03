@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/TheDivic/plaintext-tasks/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/model"
 )
 
 // Document renders doc as canonical UTF-8 bytes with LF line endings.

@@ -1,4 +1,4 @@
-module github.com/TheDivic/plaintext-tasks
+module github.com/TheDivic/plaintext-projects
 
 go 1.26.0
 

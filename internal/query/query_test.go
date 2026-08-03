@@ -3,8 +3,8 @@ package query
 import (
 	"testing"
 
-	"github.com/TheDivic/plaintext-tasks/internal/discover"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
+	"github.com/TheDivic/plaintext-projects/internal/model"
 )
 
 func demoProject() *model.Project {

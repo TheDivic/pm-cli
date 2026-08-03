@@ -4,10 +4,10 @@ Portable skills that teach an LLM agent to drive `pm` without reading this
 repository. Hand an agent the skill directory and it has the full command
 surface, the lifecycle rules, and the file schema.
 
-## `plaintext-tasks`
+## `plaintext-projects`
 
 ```
-skills/plaintext-tasks/
+skills/plaintext-projects/
   SKILL.md               command surface, lifecycle rules, JSON/exit-code contract
   references/format.md   the *.tasks.yaml schema, read on demand
 ```
@@ -24,10 +24,10 @@ somewhere on your path).
 
 ```sh
 # available in every project
-ln -s "$PWD/skills/plaintext-tasks" ~/.claude/skills/plaintext-tasks
+ln -s "$PWD/skills/plaintext-projects" ~/.claude/skills/plaintext-projects
 
 # or scoped to one project
-ln -s /path/to/tasks-cli/skills/plaintext-tasks .claude/skills/plaintext-tasks
+ln -s /path/to/plaintext-projects/skills/plaintext-projects .claude/skills/plaintext-projects
 ```
 
 Copy the directory instead of symlinking if the agent runs somewhere this

@@ -10,8 +10,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/TheDivic/plaintext-tasks/internal/model"
-	"github.com/TheDivic/plaintext-tasks/internal/yamlprofile"
+	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/yamlprofile"
 )
 
 // documentYAML mirrors the on-disk schema for decoding. Pointers on the three

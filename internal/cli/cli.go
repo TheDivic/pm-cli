@@ -9,8 +9,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/TheDivic/plaintext-tasks/internal/clock"
-	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
+	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/pmerr"
 )
 
 // Main runs the pm CLI with the given arguments and streams, returning the

@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheDivic/plaintext-tasks/internal/clock"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
-	"github.com/TheDivic/plaintext-tasks/internal/mutate"
-	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
+	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/mutate"
+	"github.com/TheDivic/plaintext-projects/internal/pmerr"
 )
 
 // readDescription resolves --description-file: a path, or "-" for standard

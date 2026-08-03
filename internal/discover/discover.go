@@ -14,10 +14,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TheDivic/plaintext-tasks/internal/decode"
-	"github.com/TheDivic/plaintext-tasks/internal/ignore"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
-	"github.com/TheDivic/plaintext-tasks/internal/validate"
+	"github.com/TheDivic/plaintext-projects/internal/decode"
+	"github.com/TheDivic/plaintext-projects/internal/ignore"
+	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/validate"
 )
 
 // suffix identifies task files.

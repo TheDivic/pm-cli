@@ -3,7 +3,7 @@ package cli
 import "github.com/spf13/cobra"
 
 // Build metadata, overridden at build time with
-// -ldflags "-X github.com/TheDivic/plaintext-tasks/internal/cli.version=... ".
+// -ldflags "-X github.com/TheDivic/plaintext-projects/internal/cli.version=... ".
 var (
 	version = "dev"
 	commit  = "none"

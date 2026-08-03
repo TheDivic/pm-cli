@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/TheDivic/plaintext-tasks/internal/clock"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/model"
 )
 
 // NextTaskID returns the next task ID for the project's prefix. It scans every

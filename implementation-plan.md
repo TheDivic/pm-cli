@@ -1,17 +1,17 @@
-# Plaintext Tasks — implementation plan
+# Plaintext Projects — implementation plan
 
 Implementation path for the `pm` CLI. The format and CLI **contract** are frozen by the
 accepted specs in the knowledge base and are not restated or changed here:
 
-- `projects/plaintext-tasks/project-task-format.md` — normative schema v1.
-- `projects/plaintext-tasks/cli-specification.md` — commands, output, mutation safety, exit codes.
+- `projects/plaintext-projects/project-task-format.md` — normative schema v1.
+- `projects/plaintext-projects/cli-specification.md` — commands, output, mutation safety, exit codes.
 
 This document owns only *how* we build it: module, dependencies, package layout, parser/emitter
 strategy, and our own task breakdown.
 
 ## Toolchain and dependencies
 
-- Language: Go 1.26, module `github.com/TheDivic/plaintext-tasks`, binary `pm`.
+- Language: Go 1.26, module `github.com/TheDivic/plaintext-projects`, binary `pm`.
 - `github.com/spf13/cobra` — subcommand dispatch and help. Configured with `SilenceErrors` and
   `SilenceUsage`; `main` maps our structured errors to exit codes 0/1/2/3 and picks human vs JSON
   rendering. Cobra never prints our diagnostics.
@@ -43,7 +43,7 @@ reads the machine date directly.
 ## Package layout
 
 ```
-tasks-cli/
+plaintext-projects/
   go.mod
   cmd/pm/main.go            thin: build cobra tree, dispatch, map errors -> exit codes
   internal/
