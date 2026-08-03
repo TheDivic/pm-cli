@@ -85,6 +85,9 @@ carries the full command surface, the lifecycle rules, and the file schema.
 
 ## Requirements
 
+- **Linux or macOS** (amd64 or arm64). `pm` guards concurrent writes with a
+  `flock` advisory lock, which Windows does not provide; Windows support needs a
+  separate implementation and is not in this release.
 - To build from source: Go 1.26 or newer. Prebuilt binaries need no runtime.
 
 ## Development
