@@ -18,8 +18,46 @@ func TestVersionSucceeds(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit = %d, want 0 (stderr: %s)", code, stderr)
 	}
-	if !strings.Contains(stdout, version) || !strings.Contains(stdout, "pm ") {
-		t.Fatalf("version output %q missing version %q", stdout, version)
+	ver, _, _ := buildMetadata()
+	if !strings.Contains(stdout, ver) || !strings.Contains(stdout, "pm ") {
+		t.Fatalf("version output %q missing version %q", stdout, ver)
+	}
+}
+
+func TestMergeBuildInfo(t *testing.T) {
+	tests := []struct {
+		name                        string
+		ver, rev, built             string
+		mainVer, vcsRev, vcsTime    string
+		wantVer, wantRev, wantBuilt string
+	}{
+		{
+			name: "ldflags win over build info",
+			ver:  "0.1.0", rev: "abc1234", built: "2026-08-03T00:00:00Z",
+			mainVer: "v9.9.9", vcsRev: "ffffffffffff", vcsTime: "2020-01-01T00:00:00Z",
+			wantVer: "0.1.0", wantRev: "abc1234", wantBuilt: "2026-08-03T00:00:00Z",
+		},
+		{
+			name: "go install fills placeholders and shortens the revision",
+			ver:  "dev", rev: "none", built: "unknown",
+			mainVer: "v0.1.0", vcsRev: "0123456789abcdef", vcsTime: "2026-08-03T15:46:41Z",
+			wantVer: "v0.1.0", wantRev: "0123456", wantBuilt: "2026-08-03T15:46:41Z",
+		},
+		{
+			name: "local go build leaves placeholders when nothing is embedded",
+			ver:  "dev", rev: "none", built: "unknown",
+			mainVer: "(devel)", vcsRev: "", vcsTime: "",
+			wantVer: "dev", wantRev: "none", wantBuilt: "unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ver, rev, built := mergeBuildInfo(tt.ver, tt.rev, tt.built, tt.mainVer, tt.vcsRev, tt.vcsTime)
+			if ver != tt.wantVer || rev != tt.wantRev || built != tt.wantBuilt {
+				t.Fatalf("got (%q, %q, %q), want (%q, %q, %q)",
+					ver, rev, built, tt.wantVer, tt.wantRev, tt.wantBuilt)
+			}
+		})
 	}
 }
 
