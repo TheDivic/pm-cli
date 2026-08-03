@@ -1,23 +1,37 @@
 ---
 name: kb-sync
-description: Mirror progress, decisions, and spec changes from this repository into the Plaintext Brain knowledge base at ~/plaintext-brain, which is the source of truth for the plaintext-projects project. Use after completing or starting a piece of work, after making a decision, when CLI behavior changes, or when committing to the knowledge base repo.
+description: Mirror progress, decisions, and spec changes from this repository into the maintainer's private knowledge-base checkout (a directory of *.tasks.yaml projects and notes), where this project's task state and decision record live. Use after completing or starting a piece of work, after making a decision, when CLI behavior changes, or when committing to the knowledge-base repo.
 ---
 
 # Keeping the knowledge base in sync
 
-The knowledge base is the **primary source of truth** for this project's progress
-and specification. The code repo implements it; it does not define it. Work is not
-finished until the KB reflects it.
+This project's **task state and decision record** live in the maintainer's private
+knowledge base, a separate Git checkout of `*.tasks.yaml` projects and Markdown
+notes. Work is not finished until it is reflected there.
 
-Location: `/Users/divic/plaintext-brain/projects/plaintext-projects/`
+If that checkout is not present, this skill does not apply — skip it.
+
+## Locating the checkout
+
+The path is machine-specific. Set it once and derive everything from it:
+
+```sh
+export PM_BRAIN=/path/to/knowledge-base        # the maintainer's is <home>/plaintext-brain
+export PM_ROOT="$PM_BRAIN"
+```
+
+**In a Docker sandbox, do not resolve this through `~`.** The sandbox home is not
+the host home; the host home is mounted at its real absolute path (for example
+`/Users/<name>/…`). `ls ~` will report the knowledge base as missing when it is
+in fact mounted. Locate it by its absolute path.
+
+The project directory is `$PM_BRAIN/projects/plaintext-projects/`:
 
 | file | holds | how to change it |
 |------|-------|------------------|
 | `plaintext-projects.tasks.yaml` | task state and progress | **`pm` only** — never hand-edit |
 | `plaintext-projects.md` | decisions (Decisions section), open questions, resources | edit directly |
 | `plaintext-projects.notes.md` | live, provisional, or unresolved observations — *not* task state | edit directly |
-| `project-task-format.md` | **frozen** normative schema | only on explicit authorization |
-| `cli-specification.md` | **frozen** normative CLI contract | only on explicit authorization |
 
 ## Progress: use `pm`, not an editor
 
@@ -26,7 +40,6 @@ applies — hand-editing bypasses validation, breaks canonical formatting, and
 corrupts ID allocation. Dogfood the tool:
 
 ```sh
-export PM_ROOT=/Users/divic/plaintext-brain
 pm tasks add -p plaintext-projects -t "<what the work is>"
 pm tasks status pt-0NN in-progress          # when starting
 pm tasks status pt-0NN done                 # when finished
@@ -41,18 +54,20 @@ actually shipped. That keeps the reversal legible instead of rewriting history.
 
 - A real decision goes in the Decisions section of `plaintext-projects.md`, as one
   sentence stating what was decided and why.
-- **If a change alters documented CLI behavior, the frozen
-  `cli-specification.md` must be amended in the same pass.** Letting code and spec
+- **The normative specs are `docs/spec/` in this repository**, not in the
+  knowledge base. If a change alters documented CLI behavior, amend
+  `docs/spec/cli-specification.md` in the same pass — letting code and spec
   diverge is worse than editing a frozen file. The user asking for the behavior
-  change is the authorization — but say plainly in your report that you touched a
-  frozen spec.
+  change is the authorization, but say plainly in your report that you touched a
+  frozen spec. If the knowledge base carries a mirror copy, update it too.
 - Provisional or unresolved things go in `plaintext-projects.notes.md`, not into task
   state and not into Decisions.
 
 ## Committing — a different style from this repo
 
-The KB is the **direct-to-main lane**: commit and push straight to `main`, no
-branch, no PR, no need to ask. But the commit style is *not* this repo's:
+The knowledge base is the **direct-to-main lane**: commit and push straight to
+`main`, no branch, no PR, no need to ask. But the commit style is *not* this
+repo's:
 
 - **Plain-language, sentence-case, past-tense titles stating the outcome.**
 - **No conventional-commit type or scope prefixes** — that style is the CLI repository only.
@@ -62,12 +77,10 @@ Excluded cancelled tasks from the project progress bar instead of backlog ones
 Added a portable agent skill for the pm CLI
 ```
 
-Full workflow reference: `projects/plaintext-brain/git-workflow.md`.
-
 ## Push safely
 
 ```sh
-cd /Users/divic/plaintext-brain
+cd "$PM_BRAIN"
 git add <only your intended paths>       # never -A, never `git commit -a`
 git status --short                       # confirm nothing unrelated is staged
 git fetch -q origin
@@ -77,8 +90,8 @@ git push origin main
 ```
 
 **Preserve unrelated dirty files.** The checkout routinely carries edits that are
-not yours — `projects/plaintext-brain/plaintext-brain.notes.md` in particular is
-the user's; leave it unstaged and never bundle it into a commit.
+not yours — other projects' task files and the maintainer's own notes. Leave them
+unstaged and never bundle them into a commit.
 
 When your change and the user's share a file you cannot split (both editing
 `plaintext-projects.tasks.yaml`, say), it is fine to carry theirs along — but note it
@@ -88,5 +101,5 @@ Never force-push. Report the commit hash and push result when done.
 
 ## Reporting
 
-State what you changed in the KB alongside what you changed in the code — the user
-tracks both. Name the task IDs you touched and their new status.
+State what you changed in the knowledge base alongside what you changed in the
+code — the user tracks both. Name the task IDs you touched and their new status.
