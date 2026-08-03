@@ -40,19 +40,24 @@ func filledCells(done, total, width int) int {
 func pct(done, total int) int { return (done*100 + total/2) / total }
 
 // miniProgress renders a compact bar with a percentage for table cells. It
-// returns a dash when there are no tasks.
-func miniProgress(done, total, width int) string {
-	if total == 0 {
+// returns a dash when there is nothing countable.
+func miniProgress(done, countable, width int) string {
+	if countable == 0 {
 		return "-"
 	}
-	filled := filledCells(done, total, width)
-	return fmt.Sprintf("%s%s %3d%%", strings.Repeat("█", filled), strings.Repeat("░", width-filled), pct(done, total))
+	filled := filledCells(done, countable, width)
+	return fmt.Sprintf("%s%s %3d%%", strings.Repeat("█", filled), strings.Repeat("░", width-filled), pct(done, countable))
 }
 
-// progressBar renders a fixed-width completion bar for done out of total. The
-// caller guarantees total > 0.
-func progressBar(done, total, width int) string {
-	filled := filledCells(done, total, width)
-	return fmt.Sprintf("[%s%s] %d%% (%d/%d done)",
-		strings.Repeat("█", filled), strings.Repeat("░", width-filled), pct(done, total), done, total)
+// progressBar renders a fixed-width completion bar for done out of countable.
+// Cancelled tasks are outside the ratio; they are reported alongside it so the
+// denominator is self-explanatory. The caller guarantees countable > 0.
+func progressBar(done, countable, cancelled, width int) string {
+	filled := filledCells(done, countable, width)
+	suffix := ""
+	if cancelled > 0 {
+		suffix = fmt.Sprintf(", %d cancelled", cancelled)
+	}
+	return fmt.Sprintf("[%s%s] %d%% (%d/%d done%s)",
+		strings.Repeat("█", filled), strings.Repeat("░", width-filled), pct(done, countable), done, countable, suffix)
 }

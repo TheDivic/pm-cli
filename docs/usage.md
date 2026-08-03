@@ -61,6 +61,15 @@ pm projects status <project-id> <status> [--reason <sentence>]
   adds per-status task counts.
 - **show** — full detail including areas, dates, blocking/cancellation, the
   task-file path, and a per-status task breakdown.
+
+Progress counts every task that can still be finished. Backlog tasks are part of
+the denominator — unfinished work is unfinished wherever it sits — but cancelled
+tasks are not, since work that will never be done would otherwise cap a project
+below 100% forever. `projects show` names the excluded count
+(`80% (8/10 done, 2 cancelled)`), and a project whose tasks are all cancelled
+reports nothing countable instead of 0%. JSON output is unchanged — it reports
+raw per-status counts, including `cancelled` and `total`, so consumers can
+compute whatever ratio they need.
 - **validate** — checks the file(s) and report every problem in one run.
 - **format** — rewrite in canonical form (idempotent); rejects invalid files
   without writing. Requires a project ID or `--all`.
