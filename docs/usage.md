@@ -4,9 +4,9 @@
 project files. It is non-interactive: every command takes what it needs from
 arguments, flags, or standard input, and never opens a prompt.
 
-The normative contract lives in the Plaintext Brain knowledge base
-(`project-task-format.md`, `cli-specification.md`). This guide is a practical
-reference.
+The normative contract lives in [`docs/spec/`](spec/)
+([format](spec/project-task-format.md), [CLI](spec/cli-specification.md)). This
+guide is a practical reference.
 
 ## Global options
 

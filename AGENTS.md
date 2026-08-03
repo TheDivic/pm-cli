@@ -6,9 +6,8 @@ in [`CONTRIBUTING.md`](CONTRIBUTING.md); this is the operational summary.
 ## Purpose
 
 Implement `pm`, the Plaintext Projects CLI, against the frozen format and CLI
-specifications in the Plaintext Brain knowledge base (project `plaintext-projects`).
-Do not change the documented format or CLI behavior; only the implementation
-path is ours to decide. See [`implementation-plan.md`](implementation-plan.md).
+specifications in [`docs/spec/`](docs/spec/). Do not change the documented
+format or CLI behavior; only the implementation path is ours to decide. See [`implementation-plan.md`](implementation-plan.md).
 
 ## Rules
 
@@ -22,7 +21,7 @@ path is ours to decide. See [`implementation-plan.md`](implementation-plan.md).
 - Before committing, run `make check` (gofmt, `go vet`, `golangci-lint`,
   `go test -race`). Keep `go mod tidy` clean and commit `go.sum`.
 - Add or update tests in the same change that adds or changes behavior. Never
-  mutate live knowledge base task files from tests; use temporary copies.
+  mutate real task files from tests; use temporary copies.
 - Keep lifecycle dates behind the injectable clock; never read the machine date
   directly.
 - **In a sandbox, build to a scratch path, not `./bin`.** When the working tree

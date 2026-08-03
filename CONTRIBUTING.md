@@ -68,5 +68,5 @@ it go through the pull-request lane like any other code.
 
 The package layout and the ordered task breakdown (T1–T13) are described in
 [`implementation-plan.md`](implementation-plan.md). The normative format and CLI
-specifications are frozen in the Plaintext Brain knowledge base and are not
-restated in this repository.
+specifications are frozen in [`docs/spec/`](docs/spec/); treat them as the
+contract, and amend them only deliberately, in the same change as the code.
