@@ -7,8 +7,8 @@ package query
 import (
 	"sort"
 
-	"github.com/TheDivic/plaintext-tasks/internal/discover"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
+	"github.com/TheDivic/plaintext-projects/internal/model"
 )
 
 // TaskRef locates a task within its project and file.

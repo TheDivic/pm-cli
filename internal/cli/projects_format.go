@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheDivic/plaintext-tasks/internal/discover"
-	"github.com/TheDivic/plaintext-tasks/internal/emit"
-	"github.com/TheDivic/plaintext-tasks/internal/fsatomic"
-	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
+	"github.com/TheDivic/plaintext-projects/internal/emit"
+	"github.com/TheDivic/plaintext-projects/internal/fsatomic"
+	"github.com/TheDivic/plaintext-projects/internal/pmerr"
 )
 
 func newProjectsFormatCmd(opts *GlobalOptions) *cobra.Command {

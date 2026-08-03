@@ -24,4 +24,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/TheDivic/plaintext-tasks
+        - github.com/TheDivic/plaintext-projects

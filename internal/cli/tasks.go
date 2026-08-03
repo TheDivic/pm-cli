@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheDivic/plaintext-tasks/internal/clock"
-	"github.com/TheDivic/plaintext-tasks/internal/discover"
-	"github.com/TheDivic/plaintext-tasks/internal/model"
-	"github.com/TheDivic/plaintext-tasks/internal/pmerr"
-	"github.com/TheDivic/plaintext-tasks/internal/query"
+	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
+	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/pmerr"
+	"github.com/TheDivic/plaintext-projects/internal/query"
 )
 
 func newTasksCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {

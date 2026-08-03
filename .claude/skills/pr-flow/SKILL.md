@@ -71,13 +71,13 @@ Retitle or rewrite a PR body through the REST API instead:
 
 ```sh
 jq -Rs '{title:"new title", body:.}' < body.md > /tmp/pr.json
-gh api -X PATCH repos/TheDivic/plaintext-tasks/pulls/<n> --input /tmp/pr.json -q '.title'
+gh api -X PATCH repos/TheDivic/plaintext-projects/pulls/<n> --input /tmp/pr.json -q '.title'
 ```
 
 Verify afterwards, since the GraphQL path fails quietly:
 
 ```sh
-gh api repos/TheDivic/plaintext-tasks/pulls/<n> \
+gh api repos/TheDivic/plaintext-projects/pulls/<n> \
   -q '{title:.title,draft:.draft,labels:[.labels[].name],assignees:[.assignees[].login]}'
 ```
 

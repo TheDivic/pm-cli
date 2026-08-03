@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TheDivic/plaintext-tasks/internal/model"
+	"github.com/TheDivic/plaintext-projects/internal/model"
 )
 
 const minimal = `schema-version: 1

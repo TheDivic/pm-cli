@@ -1,4 +1,4 @@
-# Plaintext Tasks (`pm`)
+# Plaintext Projects (`pm`)
 
 `pm` is a standalone command-line tool for managing projects and tasks stored as
 readable `*.tasks.yaml` files. There is no hosted application and no database:
@@ -34,7 +34,7 @@ pm --json tasks list --status todo     # machine-readable output for agents
 ## Specifications (normative, frozen)
 
 The behavior contract lives in the Plaintext Brain knowledge base, project
-`plaintext-tasks`, and is **not** duplicated here:
+`plaintext-projects`, and is **not** duplicated here:
 
 - **Project task format** — schema version 1 (`project-task-format.md`).
 - **CLI specification** — commands, output, mutation safety, exit codes
@@ -47,20 +47,20 @@ Our build plan lives in this repo: [`implementation-plan.md`](implementation-pla
 `pm` is a single self-contained binary with no runtime dependencies.
 
 **Prebuilt binary** — download the archive for your OS/arch from the
-[releases page](https://github.com/TheDivic/plaintext-tasks/releases), extract
+[releases page](https://github.com/TheDivic/plaintext-projects/releases), extract
 it, and put `pm` on your `PATH`.
 
 **With Go** (1.26+):
 
 ```sh
-go install github.com/TheDivic/plaintext-tasks/cmd/pm@latest
+go install github.com/TheDivic/plaintext-projects/cmd/pm@latest
 ```
 
 **From source:**
 
 ```sh
-git clone https://github.com/TheDivic/plaintext-tasks
-cd plaintext-tasks
+git clone https://github.com/TheDivic/plaintext-projects
+cd plaintext-projects
 make build            # produces ./bin/pm with version metadata baked in
 ```
 
