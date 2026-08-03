@@ -5,8 +5,9 @@ readable `*.tasks.yaml` files. There is no hosted application and no database:
 plain files are the source of truth and Git is the change history. `pm` is built
 for both people (concise terminal output) and LLM agents (structured `--json`).
 
-> **Status:** in active development. The task format and CLI contract are frozen;
-> this repository implements the `pm` executable against them.
+> **Status:** the task format and CLI contract are frozen at schema version 1 and
+> live in [`docs/spec/`](docs/spec/); this repository implements the `pm`
+> executable against them.
 
 ## What it does
 
@@ -33,12 +34,16 @@ pm --json tasks list --status todo     # machine-readable output for agents
 
 ## Specifications (normative, frozen)
 
-The behavior contract lives in the Plaintext Brain knowledge base, project
-`plaintext-projects`, and is **not** duplicated here:
+The behavior contract is versioned in this repository under
+[`docs/spec/`](docs/spec/):
 
-- **Project task format** — schema version 1 (`project-task-format.md`).
-- **CLI specification** — commands, output, mutation safety, exit codes
-  (`cli-specification.md`).
+- [**Project task format**](docs/spec/project-task-format.md) — schema version 1:
+  the restricted YAML profile, canonical field order, IDs, and validation rules.
+- [**CLI specification**](docs/spec/cli-specification.md) — commands, output,
+  mutation safety, and exit codes.
+
+They are frozen: `pm` implements them, and a change to either is a deliberate
+spec amendment that lands in the same change as the code.
 
 Our build plan lives in this repo: [`implementation-plan.md`](implementation-plan.md).
 
@@ -98,3 +103,7 @@ git config core.hooksPath .githooks
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow, commit
 conventions, and quality gates.
+
+## License
+
+[MIT](LICENSE) © Nikola Divić

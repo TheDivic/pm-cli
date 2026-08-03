@@ -13,7 +13,7 @@ skills/plaintext-projects/
 ```
 
 `SKILL.md` is self-contained: an agent that loads it needs neither this
-repository nor the knowledge-base specifications to use `pm` correctly.
+repository nor its specifications to use `pm` correctly.
 
 ### Install
 

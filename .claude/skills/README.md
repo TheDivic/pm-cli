@@ -8,12 +8,12 @@ knowledge travels with the repo instead of living in one person's head.
 |-------|--------|
 | `sandbox-checks` | running `make check` and building `pm` correctly in a Docker sandbox |
 | `pr-flow` | branch, commit, and pull-request conventions for landing a change |
-| `kb-sync` | mirroring progress, decisions, and spec changes into the Plaintext Brain knowledge base |
+| `kb-sync` | mirroring progress and decisions into the maintainer's knowledge-base checkout, when one is present |
 
 Each exists because the knowledge was rediscovered the hard way — a `make check`
 that fails for environment reasons, a `gh` subcommand that fails silently, a
-knowledge base with a different commit style from this repo. If you hit something
-non-obvious and work it out, add it here.
+notes repository with a different commit style from this repo. If you hit
+something non-obvious and work it out, add it here.
 
 ## Not to be confused with `/skills`
 

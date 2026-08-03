@@ -1,10 +1,10 @@
 # Plaintext Projects — implementation plan
 
 Implementation path for the `pm` CLI. The format and CLI **contract** are frozen by the
-accepted specs in the knowledge base and are not restated or changed here:
+accepted specs in [`docs/spec/`](docs/spec/) and are not restated or changed here:
 
-- `projects/plaintext-projects/project-task-format.md` — normative schema v1.
-- `projects/plaintext-projects/cli-specification.md` — commands, output, mutation safety, exit codes.
+- [`docs/spec/project-task-format.md`](docs/spec/project-task-format.md) — normative schema v1.
+- [`docs/spec/cli-specification.md`](docs/spec/cli-specification.md) — commands, output, mutation safety, exit codes.
 
 This document owns only *how* we build it: module, dependencies, package layout, parser/emitter
 strategy, and our own task breakdown.
@@ -65,7 +65,7 @@ plaintext-projects/
 
 ## Task breakdown
 
-Vertical slices, each independently testable. Right column maps to the frozen knowledge-base
+Vertical slices, each independently testable. Right column maps to the frozen project
 milestones (pt-011..pt-017) for traceability.
 
 | #   | Task | KB milestone |
@@ -81,14 +81,14 @@ milestones (pt-011..pt-017) for traceability.
 | T9  | Read-only commands: `projects list/show/validate/format`, `tasks list/show` (+ filters, ordering) | pt-012 |
 | T10 | `fsatomic` lock + atomic write; wire the mutation safety envelope | pt-013 |
 | T11 | Mutations: `projects create/edit/status`, `tasks add/edit/status/block/unblock` (+ ID allocation) | pt-013 |
-| T12 | Acceptance: read-only run vs live brain `--root`; full spec test matrix; operator README | pt-015 |
+| T12 | Acceptance: read-only run against a real collection via `--root`; full spec test matrix; operator README | pt-015 |
 | T13 | Package `pm` build; open draft PR | pt-014 / pt-016 |
 
 ## Testing approach
 
 - Table-driven unit tests per package; `testdata/` golden files for canonical `format` idempotence
   (emit twice → identical bytes).
-- Mutation tests operate on copies in a temp discovery root; live brain files are read-only inputs
+- Mutation tests operate on copies in a temp discovery root; real task files are read-only inputs
   for parse/validate/discover acceptance only.
 - Every spec bullet under "Tests" maps to at least one case: restricted-profile rejections, nested
   `.gitignore` semantics, duplicate IDs/prefixes, ref/parent/blocker cycles, ID allocation with gaps
@@ -97,5 +97,9 @@ milestones (pt-011..pt-017) for traceability.
 
 ## Open implementation questions
 
-None blocking. Revisit before T13: exact repo hosting (public vs private) and release/build packaging
-(`go build` vs goreleaser) once the interface is validated.
+None. The two that were parked for T13 are resolved: the repository is **public**, and releases are
+built by **goreleaser** from a `v*` tag (`.goreleaser.yaml`, `.github/workflows/release.yml`),
+producing cross-platform archives plus checksums.
+
+T1–T13 are delivered. This document is kept as the record of how `pm` was built; it is not a
+roadmap for further work.
