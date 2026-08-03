@@ -9,6 +9,9 @@ coverage.*
 # Editor / OS
 .DS_Store
 
+# Per-machine Claude Code settings (personal paths, local permissions)
+.claude/settings.local.json
+
 # Stray root build artifact (canonical output is bin/pm)
 /pm
 
