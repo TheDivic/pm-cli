@@ -9,6 +9,8 @@ for both people (concise terminal output) and LLM agents (structured `--json`).
 > live in [`docs/spec/`](docs/spec/); this repository implements the `pm`
 > executable against them.
 
+![pm in a terminal: listing projects with progress bars, listing ranked tasks, capturing a task into the inbox, moving two tasks to in-progress at once, showing a project with its rendered Markdown document, and emitting JSON for agents](docs/demo.gif)
+
 ## What it does
 
 - Discovers `*.tasks.yaml` files recursively, honoring `.gitignore` semantics
@@ -46,6 +48,10 @@ They are frozen: `pm` implements them, and a change to either is a deliberate
 spec amendment that lands in the same change as the code.
 
 Our build plan lives in this repo: [`implementation-plan.md`](implementation-plan.md).
+
+The demo above is recorded from [`docs/demo.tape`](docs/demo.tape) with
+[vhs](https://github.com/charmbracelet/vhs) against a throwaway workspace; run
+`make demo` to re-record it after a change to the output.
 
 ## Install
 

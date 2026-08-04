@@ -12,7 +12,7 @@ LDFLAGS := -s -w \
 	-X $(MODULE).commit=$(COMMIT) \
 	-X $(MODULE).date=$(DATE)
 
-.PHONY: all check fmt fmt-check vet lint test test-race build tidy clean
+.PHONY: all check fmt fmt-check vet lint test test-race build demo tidy clean
 
 # Default: run the full gate, then build.
 all: check build
@@ -44,6 +44,14 @@ test-race:
 
 build:
 	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/pm
+
+# Re-record the README demo. Needs charmbracelet/vhs on PATH; writes
+# docs/demo.gif, which is committed so GitHub can serve it.
+demo: build
+	@command -v vhs >/dev/null 2>&1 || { \
+		echo "vhs is required to record the demo: https://github.com/charmbracelet/vhs"; \
+		exit 1; }
+	PATH="$(CURDIR)/bin:$$PATH" vhs docs/demo.tape
 
 tidy:
 	$(GO) mod tidy
