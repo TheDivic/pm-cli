@@ -42,10 +42,10 @@ pm projects format [<project-id> | --all]
 pm tasks list [filters]
 pm tasks show <task-id>
 pm tasks add --project <project-id> --title <text> [options]
-pm tasks edit <task-id> [options]
-pm tasks status <task-id> <status> [--reason <sentence>]
-pm tasks block <task-id> --reason <sentence> [--task <task-id> ...]
-pm tasks unblock <task-id>
+pm tasks edit <task-id>... [options]
+pm tasks status <task-id>... <status> [--reason <sentence>]
+pm tasks block <task-id>... --reason <sentence> [--task <task-id> ...]
+pm tasks unblock <task-id>...
 
 pm tags
 ```
@@ -79,6 +79,14 @@ Common flags provide single-letter shorthands: `-p` (`--project`), `-t` (`--titl
 `tasks status` applies a valid lifecycle transition and manages its dates. Entering `in-progress` sets `started` only when absent. Entering `done` sets `completed`. Entering `cancelled` requires `--reason` and records the cancellation date.
 
 `tasks block` records a sentence, date, and optional repeated task references without changing the task status. `tasks unblock` removes the complete blocking record.
+
+### Batch task mutations
+
+`tasks edit`, `tasks status`, `tasks block`, and `tasks unblock` accept more than one task ID and apply the same change to each. For `tasks status` the final argument is the target status and every argument before it is a task ID, so the single-task form is unchanged. A repeated ID is applied once. `tasks edit --title` is restricted to a single task, because a title names one specific outcome.
+
+Every ID is resolved before anything is written, so an unresolvable ID fails the command with no file modified. Tasks are then grouped by file and each file passes through the mutation envelope once: within a file the change is all-or-nothing, and one failing task leaves that entire file unchanged. Across files it is not atomic, because each file is its own atomic write; when a later file fails, the tasks already committed are named on standard error.
+
+Human-readable output prints one line per changed task. In JSON mode a single task keeps the flat mutation result, and two or more return a batch object with `kind`, `status` when applicable, `count`, and a `tasks` array of `id` and `path`.
 
 Version 1 has no delete command.
 

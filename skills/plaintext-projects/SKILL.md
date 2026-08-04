@@ -75,8 +75,8 @@ pm tags
   backlog, done, cancelled), then priority (1 is highest, unset last), then file
   order. To answer "what should I work on next?", run `pm tasks list` and take
   the top row. Do not re-sort.
-- `projects list` orders in-progress projects first, then by priority, creation
-  date, ID.
+- `projects list` orders in-review projects first, then in-progress, then the
+  rest — and within each group by priority, creation date, ID.
 - `pm tags` lists the tag vocabulary with usage counts — check it before
   inventing a new tag.
 
@@ -89,12 +89,12 @@ denominator, `cancelled` does not.
 pm tasks add -p <project-id> -t <title> [-s <status>] [--priority <n>] \
              [--due <YYYY-MM-DD>] [-g <tag>]... [--parent <task-id>] \
              [--description-file <file|->]
-pm tasks edit <task-id> [-t <title>] [--priority <n> | --clear-priority] \
+pm tasks edit <task-id>... [-t <title>] [--priority <n> | --clear-priority] \
              [--due <date> | --clear-due] [--add-tag <t>]... [--remove-tag <t>]... \
              [--parent <id> | --clear-parent] [--description-file <file|->]
-pm tasks status <task-id> <status> [-r <reason>]
-pm tasks block <task-id> -r <reason> [--task <blocking-task-id>]...
-pm tasks unblock <task-id>
+pm tasks status <task-id>... <status> [-r <reason>]
+pm tasks block <task-id>... -r <reason> [--task <blocking-task-id>]...
+pm tasks unblock <task-id>...
 
 pm projects create --id <id> -t <title> --task-id-prefix <prefix> \
              [-s <status>] [--priority <n>] [--due <date>] [--area <a>]... [--path <file>]
@@ -110,6 +110,12 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
   status is `backlog`** — pass `-s todo` for work that is actually queued.
 - **One command changes one thing.** There is no combined "add and start"; run
   `tasks add` then `tasks status`.
+- **`edit`, `status`, `block`, and `unblock` take several task IDs at once** and
+  apply the same change to each: `pm tasks status web-001 web-002 done`. For
+  `status` the last argument is the status; everything before it is an ID. A bad
+  ID aborts before anything is written. IDs may span projects, but each file is
+  written separately, so a mid-batch failure can leave earlier files changed —
+  the committed IDs are named on stderr. `-t/--title` stays single-task.
 - **There is no delete.** Retire work with `tasks status <id> cancelled -r
   "<why>"`. Do not delete tasks to "clean up".
 - Multi-line descriptions come from a file or stdin, never an argument:

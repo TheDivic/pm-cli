@@ -92,12 +92,12 @@ pm tasks show <task-id>
 pm tasks add --project <project-id> --title <text> \
     [--description-file <file|->] [--status <s>] [--priority <n>] \
     [--parent <task-id>] [--due <date>] [--tag <t>]...
-pm tasks edit <task-id> [--title <t>] [--description-file <file|->] \
+pm tasks edit <task-id>... [--title <t>] [--description-file <file|->] \
     [--priority <n> | --clear-priority] [--due <date> | --clear-due] \
     [--add-tag <t>]... [--remove-tag <t>]... [--parent <id> | --clear-parent]
-pm tasks status <task-id> <status> [--reason <sentence>]
-pm tasks block <task-id> --reason <sentence> [--task <task-id>]...
-pm tasks unblock <task-id>
+pm tasks status <task-id>... <status> [--reason <sentence>]
+pm tasks block <task-id>... --reason <sentence> [--task <task-id>]...
+pm tasks unblock <task-id>...
 ```
 
 - **list** — grouped by status (in-review, in-progress, todo, backlog, done,
@@ -110,11 +110,19 @@ pm tasks unblock <task-id>
   blocking fields. `cancelled` requires `--reason`.
 - **block / unblock** — record or remove a blocking condition without changing
   the task status.
+- **batch** — `edit`, `status`, `block`, and `unblock` take several task IDs and
+  apply the same change to each. For `status` the last argument is the status and
+  everything before it is an ID. Every ID is resolved before anything is written,
+  so a typo changes nothing; tasks are then written one file at a time, so a
+  file is all-or-nothing but a multi-file batch is not. Tasks already committed
+  when a later file fails are named on stderr. `--title` stays single-task.
 
 ```sh
 pm tasks add --project website --title "Design the header" --priority 1 --tag design
 echo "Acceptance: passes Lighthouse." | pm tasks add --project website --title "Audit perf" --description-file -
 pm tasks status web-001 in-progress
+pm tasks status web-001 web-002 web-003 done     # one status, several tasks
+pm tasks edit web-001 web-002 --add-tag q3       # one edit, several tasks
 pm tasks block web-002 --reason "depends on the header" --task web-001
 pm tasks list --project website            # open work only
 pm tasks list --project website --status done

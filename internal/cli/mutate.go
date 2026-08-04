@@ -71,26 +71,6 @@ func resolveProject(opts *GlobalOptions, id string) (string, error) {
 	return "", pmerr.Usage("no project with id %q under the discovery root", id).WithProject(id)
 }
 
-// resolveTask finds the project file that contains the given task ID.
-func resolveTask(opts *GlobalOptions, taskID string) (path, projectID string, err error) {
-	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
-	if err != nil {
-		return "", "", pmerr.IO("cannot discover projects: %v", err)
-	}
-	for i := range ws.Projects {
-		p := &ws.Projects[i]
-		if p.Doc == nil {
-			continue
-		}
-		for j := range p.Doc.Tasks {
-			if p.Doc.Tasks[j].ID == taskID {
-				return p.AbsPath, p.Doc.Project.ID, nil
-			}
-		}
-	}
-	return "", "", pmerr.Usage("no task with id %q under the discovery root", taskID).WithTask(taskID)
-}
-
 // mutationResult is the success payload reported by a mutation command.
 type mutationResult struct {
 	Kind    string `json:"kind"`
@@ -107,12 +87,18 @@ func reportMutation(w io.Writer, jsonMode bool, r mutationResult) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(r)
 	}
+	writeMutationLine(w, r)
+	return nil
+}
+
+// writeMutationLine renders one human-readable mutation line. Batch mutations
+// emit one per changed task, so the single-task format stays the unit.
+func writeMutationLine(w io.Writer, r mutationResult) {
 	msg := fmt.Sprintf("%s %s", r.Kind, r.ID)
 	if r.Status != "" {
 		msg += fmt.Sprintf(" (%s)", r.Status)
 	}
 	fmt.Fprintf(w, "%s -> %s\n", msg, r.Path)
-	return nil
 }
 
 // strp returns a pointer to s for optional edit fields.

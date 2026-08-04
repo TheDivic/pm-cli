@@ -97,15 +97,16 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 		clearPriority, clearDue, clearParent bool
 	)
 	cmd := &cobra.Command{
-		Use:   "edit <task-id>",
-		Short: "Edit a task's title, description, priority, due date, tags, and parent",
-		Args:  cobra.ExactArgs(1),
+		Use:   "edit <task-id>...",
+		Short: "Edit the title, description, priority, due date, tags, and parent of one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
 			if cmd.Flags().Changed("title") {
+				// A title names one specific outcome, so applying one to several
+				// tasks is a mistake rather than a bulk edit.
+				if len(args) > 1 {
+					return pmerr.Usage("--title applies to a single task; got %d task IDs", len(args))
+				}
 				e.Title = strp(title)
 			}
 			if desc, provided, derr := readDescription(cmd, descFile); derr != nil {
@@ -126,14 +127,10 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 			}
 			e.ClearParent = clearParent
 
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.EditTask(d, args[0], e)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "updated task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "updated task", "",
+				func(d *model.Document, id string) error {
+					return mutate.EditTask(d, id, e)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -155,23 +152,18 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 func newTasksStatusCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	var reason string
 	cmd := &cobra.Command{
-		Use:   "status <task-id> <status>",
-		Short: "Change a task's lifecycle status",
-		Args:  cobra.ExactArgs(2),
+		Use:   "status <task-id>... <status>",
+		Short: "Change the lifecycle status of one or more tasks",
+		Long: "Change the lifecycle status of one or more tasks.\n\n" +
+			"The final argument is the target status; every argument before it is a\n" +
+			"task ID. All named tasks move to the same status.",
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			status := model.TaskStatus(args[1])
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.TaskStatus(d, args[0], status, reason, clk)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "task", ID: args[0], Status: args[1], Path: path,
-			})
+			ids, status := args[:len(args)-1], model.TaskStatus(args[len(args)-1])
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), ids, "task", string(status),
+				func(d *model.Document, id string) error {
+					return mutate.TaskStatus(d, id, status, reason, clk)
+				})
 		},
 	}
 	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason (required for cancelled)")
@@ -186,22 +178,14 @@ func newTasksBlockCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 		blockers []string
 	)
 	cmd := &cobra.Command{
-		Use:   "block <task-id>",
-		Short: "Record a blocking condition on a task",
-		Args:  cobra.ExactArgs(1),
+		Use:   "block <task-id>...",
+		Short: "Record a blocking condition on one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.BlockTask(d, args[0], reason, blockers, clk)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "blocked task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "blocked task", "",
+				func(d *model.Document, id string) error {
+					return mutate.BlockTask(d, id, reason, blockers, clk)
+				})
 		},
 	}
 	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason for the blockage (required)")
@@ -212,22 +196,14 @@ func newTasksBlockCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 
 func newTasksUnblockCmd(opts *GlobalOptions) *cobra.Command {
 	return &cobra.Command{
-		Use:   "unblock <task-id>",
-		Short: "Remove a task's blocking record",
-		Args:  cobra.ExactArgs(1),
+		Use:   "unblock <task-id>...",
+		Short: "Remove the blocking record from one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.UnblockTask(d, args[0])
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "unblocked task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "unblocked task", "",
+				func(d *model.Document, id string) error {
+					return mutate.UnblockTask(d, id)
+				})
 		},
 	}
 }
