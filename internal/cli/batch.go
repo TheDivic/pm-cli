@@ -76,14 +76,16 @@ func taskPaths(ws *discover.Workspace) map[string]string {
 	return out
 }
 
-// applyToTasks runs apply over every target, grouped by file so each file passes
-// through the mutation envelope (lock, validate, write) exactly once.
+// applyToTaskFiles runs apply once per file, handing it every targeted ID in
+// that file, so each file passes through the mutation envelope (lock, validate,
+// write) exactly once. apply returns the IDs it actually changed, which may
+// exceed the requested ones — a cascading delete also removes descendants.
 //
 // Within a file the change is all-or-nothing: one failing task leaves that whole
 // file untouched. Across files it is not, because each file is its own atomic
 // write. When a later file fails, the tasks already committed are named on
 // stderr rather than left for the caller to work out.
-func applyToTasks(stderr io.Writer, targets []taskTarget, apply func(*model.Document, string) error) ([]taskResult, error) {
+func applyToTaskFiles(stderr io.Writer, targets []taskTarget, apply func(*model.Document, []string) ([]string, error)) ([]taskResult, error) {
 	var order []string
 	byPath := map[string][]string{}
 	for _, t := range targets {
@@ -92,22 +94,14 @@ func applyToTasks(stderr io.Writer, targets []taskTarget, apply func(*model.Docu
 		}
 		byPath[t.Path] = append(byPath[t.Path], t.ID)
 	}
-	batch := len(targets) > 1
 
 	done := make([]taskResult, 0, len(targets))
 	for _, path := range order {
-		ids := byPath[path]
+		var changed []string
 		err := runMutation(stderr, path, func(d *model.Document) error {
-			for _, id := range ids {
-				if aerr := apply(d, id); aerr != nil {
-					if batch {
-						// Name the offending task; the file holds several.
-						return fmt.Errorf("%s: %w", id, aerr)
-					}
-					return aerr
-				}
-			}
-			return nil
+			var aerr error
+			changed, aerr = apply(d, byPath[path])
+			return aerr
 		})
 		if err != nil {
 			if len(done) > 0 {
@@ -115,11 +109,28 @@ func applyToTasks(stderr io.Writer, targets []taskTarget, apply func(*model.Docu
 			}
 			return done, err
 		}
-		for _, id := range ids {
+		for _, id := range changed {
 			done = append(done, taskResult{ID: id, Path: path})
 		}
 	}
 	return done, nil
+}
+
+// applyToTasks runs a per-task change over every target, one file at a time.
+func applyToTasks(stderr io.Writer, targets []taskTarget, apply func(*model.Document, string) error) ([]taskResult, error) {
+	batch := len(targets) > 1
+	return applyToTaskFiles(stderr, targets, func(d *model.Document, ids []string) ([]string, error) {
+		for _, id := range ids {
+			if err := apply(d, id); err != nil {
+				if batch {
+					// Name the offending task; the command covers several.
+					return nil, fmt.Errorf("%s: %w", id, err)
+				}
+				return nil, err
+			}
+		}
+		return ids, nil
+	})
 }
 
 func resultIDs(rs []taskResult) []string {

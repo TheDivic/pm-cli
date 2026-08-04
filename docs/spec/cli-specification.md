@@ -43,6 +43,7 @@ pm tasks list [filters]
 pm tasks show <task-id>
 pm tasks add --project <project-id> --title <text> [options]
 pm tasks edit <task-id>... [options]
+pm tasks delete <task-id>... [--cascade]
 pm tasks status <task-id>... <status> [--reason <sentence>]
 pm tasks block <task-id>... --reason <sentence> [--task <task-id> ...]
 pm tasks unblock <task-id>...
@@ -88,7 +89,11 @@ Every ID is resolved before anything is written, so an unresolvable ID fails the
 
 Human-readable output prints one line per changed task. In JSON mode a single task keeps the flat mutation result, and two or more return a batch object with `kind`, `status` when applicable, `count`, and a `tasks` array of `id` and `path`.
 
-Version 1 has no delete command.
+`tasks delete` removes tasks from the file. It is the one mutation that destroys history rather than recording an outcome, so cancelling remains the way to retire work whose outcome should stay legible; Git is the only recovery path for a delete.
+
+A delete is refused, with nothing written, when a task outside the deletion points at one inside it — as a `parent` or in a `blocked.tasks` list. The refusal names every referring task and the relationship. `--cascade` widens the deletion to every descendant of a named task and strips the deleted IDs from the blocker lists of the tasks that remain; a blocking record whose list empties keeps its reason and date. Naming every task in a subtree explicitly deletes it without `--cascade`, because no dangling reference is left behind.
+
+Delete accepts several task IDs and follows the batch rules above. Its output reports every task actually deleted, which under `--cascade` includes descendants the caller did not name.
 
 ## Dates
 

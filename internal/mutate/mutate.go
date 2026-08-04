@@ -307,6 +307,92 @@ func BlockTask(doc *model.Document, id, reason string, blockers []string, clk cl
 	return nil
 }
 
+// DeleteTasks removes the named tasks from the document and returns the IDs it
+// actually removed, in file order.
+//
+// Deleting is the one mutation that destroys history, so it refuses rather than
+// guesses: when a task outside the removal set points at one inside it — as a
+// child or as a blocker — the whole delete fails and names the referrers.
+// Cascade widens the removal set to every descendant of a named task and strips
+// the removed IDs from the blocker lists that survive, which is the only way
+// those references can be resolved without a second guess about intent.
+func DeleteTasks(doc *model.Document, ids []string, cascade bool) ([]string, error) {
+	remove := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		if _, err := findTask(doc, id); err != nil {
+			return nil, err
+		}
+		remove[id] = true
+	}
+	if cascade {
+		// Repeat until the set stops growing so whole subtrees go, not just
+		// direct children.
+		for grew := true; grew; {
+			grew = false
+			for i := range doc.Tasks {
+				t := &doc.Tasks[i]
+				if !remove[t.ID] && t.Parent != "" && remove[t.Parent] {
+					remove[t.ID] = true
+					grew = true
+				}
+			}
+		}
+	}
+
+	var refs []string
+	for i := range doc.Tasks {
+		t := &doc.Tasks[i]
+		if remove[t.ID] {
+			continue
+		}
+		if t.Parent != "" && remove[t.Parent] {
+			refs = append(refs, fmt.Sprintf("%s is a child of %s", t.ID, t.Parent))
+		}
+		if t.Blocked != nil {
+			for _, b := range t.Blocked.Tasks {
+				if remove[b] {
+					refs = append(refs, fmt.Sprintf("%s is blocked by %s", t.ID, b))
+				}
+			}
+		}
+	}
+	if len(refs) > 0 && !cascade {
+		return nil, fmt.Errorf("other tasks still reference this deletion (%s); "+
+			"use --cascade to remove the subtree and drop those references", strings.Join(refs, "; "))
+	}
+
+	kept := doc.Tasks[:0:0]
+	var deleted []string
+	for i := range doc.Tasks {
+		t := doc.Tasks[i]
+		if remove[t.ID] {
+			deleted = append(deleted, t.ID)
+			continue
+		}
+		if t.Blocked != nil && len(t.Blocked.Tasks) > 0 {
+			blocked := *t.Blocked // copy before editing; the original is shared
+			blocked.Tasks = keepUnremoved(blocked.Tasks, remove)
+			t.Blocked = &blocked
+		}
+		kept = append(kept, t)
+	}
+	doc.Tasks = kept
+	return deleted, nil
+}
+
+// keepUnremoved drops the deleted IDs from a blocker list. An emptied list is
+// returned as nil so the emitter omits the key; the blocking reason and date
+// remain valid on their own.
+func keepUnremoved(blockers []string, remove map[string]bool) []string {
+	var keep []string
+	for _, b := range blockers {
+		if !remove[b] {
+			keep = append(keep, b)
+		}
+	}
+	return keep
+}
+
 // UnblockTask removes the complete blocking record.
 func UnblockTask(doc *model.Document, id string) error {
 	i, err := findTask(doc, id)

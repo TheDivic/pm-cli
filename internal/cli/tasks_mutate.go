@@ -147,6 +147,41 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 	return cmd
 }
 
+// ---- tasks delete ----
+
+func newTasksDeleteCmd(opts *GlobalOptions) *cobra.Command {
+	var cascade bool
+	cmd := &cobra.Command{
+		Use:   "delete <task-id>...",
+		Short: "Delete one or more tasks",
+		Long: "Delete one or more tasks.\n\n" +
+			"Deleting removes the record and its history from the file; Git is the only\n" +
+			"way back. To retire work while keeping the outcome legible, cancel it\n" +
+			"instead: pm tasks status <task-id> cancelled --reason \"<why>\".\n\n" +
+			"A delete is refused when a task outside it points at one inside it, as a\n" +
+			"child or as a blocker. --cascade removes the whole subtree and drops those\n" +
+			"references from the tasks that remain.",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			targets, err := resolveTaskBatch(opts, args)
+			if err != nil {
+				return err
+			}
+			results, err := applyToTaskFiles(cmd.ErrOrStderr(), targets,
+				func(d *model.Document, ids []string) ([]string, error) {
+					return mutate.DeleteTasks(d, ids, cascade)
+				})
+			if err != nil {
+				return err
+			}
+			return reportTaskMutations(cmd.OutOrStdout(), opts.JSON, "deleted task", "", results)
+		},
+	}
+	cmd.Flags().BoolVar(&cascade, "cascade", false,
+		"also delete descendants and drop references from the tasks that remain")
+	return cmd
+}
+
 // ---- tasks status ----
 
 func newTasksStatusCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {

@@ -95,6 +95,7 @@ pm tasks edit <task-id>... [-t <title>] [--priority <n> | --clear-priority] \
 pm tasks status <task-id>... <status> [-r <reason>]
 pm tasks block <task-id>... -r <reason> [--task <blocking-task-id>]...
 pm tasks unblock <task-id>...
+pm tasks delete <task-id>... [--cascade]
 
 pm projects create --id <id> -t <title> --task-id-prefix <prefix> \
              [-s <status>] [--priority <n>] [--due <date>] [--area <a>]... [--path <file>]
@@ -116,8 +117,12 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
   ID aborts before anything is written. IDs may span projects, but each file is
   written separately, so a mid-batch failure can leave earlier files changed —
   the committed IDs are named on stderr. `-t/--title` stays single-task.
-- **There is no delete.** Retire work with `tasks status <id> cancelled -r
-  "<why>"`. Do not delete tasks to "clean up".
+- **Prefer cancelling to deleting.** `tasks status <id> cancelled -r "<why>"`
+  keeps the outcome on the record; `tasks delete` destroys it and is recoverable
+  only through Git. Do not delete tasks to "clean up" — cancel them. Delete is
+  for records that should never have existed (a duplicate, a mistaken entry).
+  It refuses when another task points at the target as a parent or blocker;
+  `--cascade` removes the subtree and drops those references.
 - Multi-line descriptions come from a file or stdin, never an argument:
   `printf '%s\n' "..." | pm tasks add -p web -t "Audit" --description-file -`
 

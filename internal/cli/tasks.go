@@ -24,6 +24,7 @@ func newTasksCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	cmd.AddCommand(newTasksShowCmd(opts))
 	cmd.AddCommand(newTasksAddCmd(opts, clk))
 	cmd.AddCommand(newTasksEditCmd(opts))
+	cmd.AddCommand(newTasksDeleteCmd(opts))
 	cmd.AddCommand(newTasksStatusCmd(opts, clk))
 	cmd.AddCommand(newTasksBlockCmd(opts, clk))
 	cmd.AddCommand(newTasksUnblockCmd(opts))

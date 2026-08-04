@@ -98,6 +98,7 @@ pm tasks edit <task-id>... [--title <t>] [--description-file <file|->] \
 pm tasks status <task-id>... <status> [--reason <sentence>]
 pm tasks block <task-id>... --reason <sentence> [--task <task-id>]...
 pm tasks unblock <task-id>...
+pm tasks delete <task-id>... [--cascade]
 ```
 
 - **list** — grouped by status (in-review, in-progress, todo, backlog, done,
@@ -110,6 +111,11 @@ pm tasks unblock <task-id>...
   blocking fields. `cancelled` requires `--reason`.
 - **block / unblock** — record or remove a blocking condition without changing
   the task status.
+- **delete** — removes tasks outright. Refuses when another task points at one
+  being deleted (as a parent or a blocker), naming the referrers; `--cascade`
+  removes the subtree and drops those references. Prefer `status <id> cancelled`
+  when the outcome should stay on the record — a delete is only recoverable
+  through Git.
 - **batch** — `edit`, `status`, `block`, and `unblock` take several task IDs and
   apply the same change to each. For `status` the last argument is the status and
   everything before it is an ID. Every ID is resolved before anything is written,
@@ -143,8 +149,12 @@ Every write follows a fixed sequence: lock the target file, read and parse it,
 validate the document, apply one change, validate the result, render canonical
 bytes, and atomically replace the file. Any error before the final write leaves
 the original bytes unchanged, and a per-file lock prevents concurrent commands
-in one checkout from colliding. There is no delete command; retire unfinished
-work by cancelling it.
+in one checkout from colliding.
+
+`tasks delete` is the one command that removes history rather than recording an
+outcome. Cancelling (`tasks status <id> cancelled -r "<why>"`) remains the way
+to retire work you want to stay legible; deletes are recoverable only through
+Git.
 
 ## Agent and automation use
 
