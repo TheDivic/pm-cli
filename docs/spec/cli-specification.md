@@ -49,7 +49,10 @@ pm tasks block <task-id>... --reason <sentence> [--task <task-id> ...]
 pm tasks unblock <task-id>...
 
 pm tags
+pm completion <bash|zsh|fish|powershell>
 ```
+
+`completion` writes a shell completion script to standard output. Completion is dynamic: task IDs, project IDs, tags, and area slugs are resolved from the discovery root at the moment of the keystroke, and statuses come from the lifecycle vocabulary for the resource being completed. `tasks status` completes task IDs in every position and adds the task statuses from the second argument onward, matching its `<task-id>... <status>` grammar. IDs already present on the command line are not offered again. A completion request never reports an error or writes diagnostics: an unreadable or invalid file yields no suggestions rather than noise in the user's prompt.
 
 `tags` lists the distinct tags in use across all discovered tasks with a per-tag usage count, most-used first, in human-readable and JSON form. It counts every task, including terminal ones, so it reflects the full tag vocabulary.
 

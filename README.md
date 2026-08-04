@@ -76,6 +76,12 @@ pm version
 export PM_ROOT=/path/to/your/tasks   # optional; --root overrides it
 ```
 
+Enable shell completion for task IDs, project IDs, statuses, and tags:
+
+```sh
+pm completion zsh > "${fpath[1]}/_pm"    # or bash / fish / powershell
+```
+
 ## Agent use
 
 Pass `--json` to any command for structured output and rely on the exit codes;

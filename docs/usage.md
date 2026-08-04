@@ -143,6 +143,22 @@ pm tags
 Lists the distinct tags in use across all tasks with a per-tag usage count,
 most-used first, in human-readable and `--json` form.
 
+## Shell completion
+
+```sh
+pm completion bash > /etc/bash_completion.d/pm       # bash
+pm completion zsh  > "${fpath[1]}/_pm"               # zsh
+pm completion fish > ~/.config/fish/completions/pm.fish
+pm completion powershell | Out-String | Invoke-Expression
+```
+
+Completion is dynamic — it reads the discovery root as you type, so task IDs
+come annotated with status and title, project IDs with their titles, and `--tag`
+and `--area` offer the vocabulary already in use. `pm tasks status <TAB>` offers
+task IDs; from the second argument on it offers statuses too, and IDs you have
+already typed drop out of the list. Set `PM_ROOT` so completion works from any
+directory.
+
 ## Mutation safety
 
 Every write follows a fixed sequence: lock the target file, read and parse it,
