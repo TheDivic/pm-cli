@@ -44,7 +44,7 @@ prefix, so most commands accept a task ID without a project path.
 ## Projects
 
 ```sh
-pm projects list [--status s]... [--priority n]... [--area a]...
+pm projects list [-a|--all] [--status s]... [--priority n]... [--area a]...
 pm projects show <project-id>
 pm projects validate [<project-id> | --all]
 pm projects format [<project-id> | --all]
@@ -55,12 +55,17 @@ pm projects edit <project-id> [--title <t>] [--priority <n> | --clear-priority] 
 pm projects status <project-id> <status> [--reason <sentence>]
 ```
 
-- **list** — in-review projects first, then in-progress, then others; within a
-  group by priority (lowest first, unset last), creation date, then ID. Columns: ID,
-  title, status, priority, creation date, and a completion progress bar. JSON
-  adds per-status task counts.
+- **list** — hides `done` and `cancelled` projects by default; `-a`/`--all`
+  includes them and an explicit `--status` overrides. In-review projects come
+  first, then in-progress, then others; within a group by priority (lowest
+  first, unset last), creation date, then ID. Columns: ID, title, status,
+  priority, creation date, and a completion progress bar. JSON adds per-status
+  task counts.
 - **show** — full detail including areas, dates, blocking/cancellation, the
-  task-file path, and a per-status task breakdown.
+  task-file path, a per-status task breakdown, and the project's Markdown
+  document (`<project-id>.md`, beside the task file) rendered for the terminal.
+  JSON returns `doc_path` and the raw Markdown in `doc` instead of the
+  rendering. Color is used only on a terminal and never when `NO_COLOR` is set.
 
 Progress counts every task that can still be finished. Backlog tasks are part of
 the denominator — unfinished work is unfinished wherever it sits — but cancelled

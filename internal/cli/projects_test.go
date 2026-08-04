@@ -181,8 +181,9 @@ func TestProjectsListFilters(t *testing.T) {
 	eq(listIDs(t, root, "--status", "idea"), []string{"a", "c"})
 	// priority 1 only.
 	eq(listIDs(t, root, "--priority", "1"), []string{"a"})
-	// area beta only.
-	eq(listIDs(t, root, "--area", "beta"), []string{"b"})
+	// area beta only. b is done, so it needs --all to show up.
+	eq(listIDs(t, root, "--all", "--area", "beta"), []string{"b"})
+	eq(listIDs(t, root, "--area", "beta"), nil)
 	// AND across filters: idea AND priority 2 -> c.
 	eq(listIDs(t, root, "--status", "idea", "--priority", "2"), []string{"c"})
 	// OR within a filter: priority 1 or 2 -> a, c.
@@ -295,5 +296,115 @@ func TestProjectsStatusRejectsUnknownStatus(t *testing.T) {
 
 	if code, _, _ := run("--root", root, "projects", "status", "demo", "in-revue"); code != 1 {
 		t.Fatalf("typo status: exit = %d, want 1", code)
+	}
+}
+
+const projectMarkdown = `# Demo Project
+
+A short description with **emphasis** and ` + "`code`" + `.
+
+## Decisions
+
+- [x] Picked YAML
+- [ ] Picked a renderer
+`
+
+func TestProjectsShowRendersTheProjectDocument(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	code, stdout, stderr := run("--root", root, "projects", "show", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	// The record still comes first, then the document behind a labeled rule.
+	if !strings.Contains(stdout, "Prefix:") {
+		t.Fatalf("project fields missing: %s", stdout)
+	}
+	for _, want := range []string{"demo.md", "DEMO PROJECT", "Decisions", "☑ Picked YAML", "☐ Picked a renderer"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("rendered document missing %q:\n%s", want, stdout)
+		}
+	}
+	// Markup is consumed, and a non-terminal writer gets no escape codes.
+	if strings.Contains(stdout, "**") || strings.Contains(stdout, "\x1b") {
+		t.Fatalf("output should be plain rendered text:\n%q", stdout)
+	}
+}
+
+func TestProjectsShowWithoutADocument(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	code, stdout, stderr := run("--root", root, "projects", "show", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, "──") {
+		t.Fatalf("no document should mean no separator:\n%s", stdout)
+	}
+}
+
+func TestProjectsShowJSONCarriesTheDocumentSource(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	_, stdout, _ := run("--json", "--root", root, "projects", "show", "demo")
+	var d struct {
+		DocPath string `json:"doc_path"`
+		Doc     string `json:"doc"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &d); err != nil {
+		t.Fatalf("not JSON: %v (%q)", err, stdout)
+	}
+	if d.DocPath != filepath.Join("demo", "demo.md") {
+		t.Fatalf("doc_path = %q", d.DocPath)
+	}
+	// JSON carries the source, not the terminal rendering.
+	if !strings.Contains(d.Doc, "# Demo Project") || !strings.Contains(d.Doc, "**emphasis**") {
+		t.Fatalf("doc should be the raw Markdown: %q", d.Doc)
+	}
+}
+
+func TestProjectsShowJSONOmitsAMissingDocument(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	_, stdout, _ := run("--json", "--root", root, "projects", "show", "demo")
+	if strings.Contains(stdout, "doc_path") || strings.Contains(stdout, `"doc"`) {
+		t.Fatalf("absent document should be omitted: %s", stdout)
+	}
+}
+
+func TestProjectsListHidesTerminalProjectsByDefault(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "live.tasks.yaml"), projFileArea("live", "in-progress", "", "alpha"))
+	writeFile(t, filepath.Join(root, "shipped.tasks.yaml"), projFileArea("shipped", "done", "", "alpha"))
+	writeFile(t, filepath.Join(root, "dropped.tasks.yaml"), projFileArea("dropped", "cancelled", "", "alpha"))
+	writeFile(t, filepath.Join(root, "idea.tasks.yaml"), projFileArea("idea", "idea", "", "alpha"))
+
+	// Finished work accumulates without bound, so it is hidden by default.
+	got := listIDs(t, root)
+	if strings.Join(got, ",") != "live,idea" {
+		t.Fatalf("default listing = %v, want [live idea]", got)
+	}
+
+	// -a/--all brings it back.
+	all := listIDs(t, root, "--all")
+	if len(all) != 4 {
+		t.Fatalf("--all listing = %v, want 4 projects", all)
+	}
+	if short := listIDs(t, root, "-a"); len(short) != 4 {
+		t.Fatalf("-a listing = %v, want 4 projects", short)
+	}
+
+	// An explicit --status overrides the default, exactly as for tasks list.
+	if got := listIDs(t, root, "--status", "done"); strings.Join(got, ",") != "shipped" {
+		t.Fatalf("--status done = %v, want [shipped]", got)
+	}
+	if got := listIDs(t, root, "-s", "cancelled"); strings.Join(got, ",") != "dropped" {
+		t.Fatalf("-s cancelled = %v, want [dropped]", got)
 	}
 }

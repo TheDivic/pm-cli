@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
 	"github.com/TheDivic/plaintext-projects/internal/clock"
 	"github.com/TheDivic/plaintext-projects/internal/discover"
+	"github.com/TheDivic/plaintext-projects/internal/mdrender"
 	"github.com/TheDivic/plaintext-projects/internal/model"
 	"github.com/TheDivic/plaintext-projects/internal/pmerr"
 	"github.com/TheDivic/plaintext-projects/internal/validate"
@@ -62,6 +65,7 @@ func newProjectsShowCmd(opts *GlobalOptions) *cobra.Command {
 				return writeProjectShowJSON(cmd.OutOrStdout(), target)
 			}
 			writeProjectShowText(cmd.OutOrStdout(), target)
+			writeProjectDoc(cmd.OutOrStdout(), target)
 			return nil
 		},
 	}
@@ -81,6 +85,8 @@ type projectDetail struct {
 	Cancellation *model.Cancellation `json:"cancellation,omitempty"`
 	Completed    string              `json:"completed,omitempty"`
 	Path         string              `json:"path"`
+	DocPath      string              `json:"doc_path,omitempty"`
+	Doc          string              `json:"doc,omitempty"`
 	TaskCounts   map[string]int      `json:"task_counts"`
 }
 
@@ -102,6 +108,9 @@ func countableTotal(counts map[string]int) int {
 
 func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
 	pr := p.Doc.Project
+	// JSON carries the document as stored: rendering is for terminals, and a
+	// consumer that wants Markdown wants the source.
+	docPath, doc, _ := projectDoc(p)
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
@@ -119,6 +128,8 @@ func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
 		Cancellation: pr.Cancellation,
 		Completed:    pr.Completed,
 		Path:         p.Path,
+		DocPath:      docPath,
+		Doc:          doc,
 		TaskCounts:   taskCounts(p.Doc),
 	})
 }
@@ -164,6 +175,43 @@ func writeProjectShowText(w io.Writer, p *discover.Project) {
 	}
 }
 
+// projectDoc locates a project's Markdown document, which by convention sits
+// beside the task file under the same basename. It returns the path relative to
+// the discovery root, the contents, and whether it was found.
+func projectDoc(p *discover.Project) (relPath, content string, ok bool) {
+	if p.Doc == nil {
+		return "", "", false
+	}
+	name := p.Doc.Project.ID + ".md"
+	data, err := os.ReadFile(filepath.Join(filepath.Dir(p.AbsPath), name))
+	if err != nil {
+		return "", "", false // no document is the normal case, not an error
+	}
+	return filepath.Join(filepath.Dir(p.Path), name), string(data), true
+}
+
+// writeProjectDoc appends the project's rendered Markdown document, so `projects
+// show` reports what the project *is* alongside its state. A missing document is
+// silently skipped.
+func writeProjectDoc(w io.Writer, p *discover.Project) {
+	rel, content, ok := projectDoc(p)
+	if !ok || strings.TrimSpace(content) == "" {
+		return
+	}
+	fmt.Fprintf(w, "\n%s\n\n%s\n", docSeparator(rel), mdrender.Render(content, useColor(w)))
+}
+
+// docSeparator draws a labeled rule so the document is clearly a different kind
+// of content from the fields above it.
+func docSeparator(label string) string {
+	const width = 72
+	prefix := "── " + label + " "
+	if n := width - len([]rune(prefix)); n > 0 {
+		return prefix + strings.Repeat("─", n)
+	}
+	return prefix
+}
+
 // taskStatusOrder lists task statuses in lifecycle order for progress display.
 var taskStatusOrder = []model.TaskStatus{
 	model.TaskBacklog,
@@ -188,8 +236,22 @@ func rootOrCWD(opts *GlobalOptions) string {
 
 // ---- projects list ----
 
+// openProjectStatuses are the non-terminal project statuses shown by `projects
+// list` by default. Done and cancelled projects are history: they accumulate
+// without bound and would eventually bury the work in flight.
+var openProjectStatuses = []string{
+	string(model.ProjectIdea),
+	string(model.ProjectTodo),
+	string(model.ProjectInProgress),
+	string(model.ProjectInReview),
+	string(model.ProjectBlocked),
+}
+
 func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
-	var f projectFilter
+	var (
+		f   projectFilter
+		all bool
+	)
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List discovered projects, with optional filters",
@@ -199,6 +261,11 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
+			// Mirrors tasks list: hide finished work unless asked, and let an
+			// explicit --status say exactly what to show.
+			if !all && !cmd.Flags().Changed("status") {
+				f.Statuses = openProjectStatuses
+			}
 			ordered := filterProjects(listOrder(ws), f)
 			if opts.JSON {
 				return writeProjectsListJSON(cmd.OutOrStdout(), ordered)
@@ -207,6 +274,7 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
+	flags.BoolVarP(&all, "all", "a", false, "include done and cancelled projects")
 	flags.StringSliceVarP(&f.Statuses, "status", "s", nil, "filter by project status (repeatable)")
 	flags.IntSliceVar(&f.Priorities, "priority", nil, "filter by priority (repeatable)")
 	flags.StringSliceVar(&f.Areas, "area", nil, "filter by area (repeatable)")

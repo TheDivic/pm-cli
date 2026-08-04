@@ -58,7 +58,7 @@ need a project or a path — just the ID.
 ## Reading
 
 ```sh
-pm projects list [-s <status>]... [--priority <n>]... [--area <a>]...
+pm projects list [-a] [-s <status>]... [--priority <n>]... [--area <a>]...
 pm projects show <project-id>
 pm projects validate [<project-id> | --all]
 pm tasks list [-a] [-p <project>]... [-s <status>]... [-g <tag>]... [--area <a>]... \
@@ -75,8 +75,13 @@ pm tags
   backlog, done, cancelled), then priority (1 is highest, unset last), then file
   order. To answer "what should I work on next?", run `pm tasks list` and take
   the top row. Do not re-sort.
-- `projects list` orders in-review projects first, then in-progress, then the
-  rest — and within each group by priority, creation date, ID.
+- `projects list` **hides `done` and `cancelled` projects by default** (`-a`
+  includes them; an explicit `-s` overrides). It orders in-review projects
+  first, then in-progress, then the rest — and within each group by priority,
+  creation date, ID.
+- `projects show` also returns the project's Markdown document. In `--json` it
+  is the raw source under `doc`, with `doc_path` alongside — read that instead
+  of opening the file yourself.
 - `pm tags` lists the tag vocabulary with usage counts — check it before
   inventing a new tag.
 

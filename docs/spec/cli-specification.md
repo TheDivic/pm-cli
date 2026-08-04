@@ -31,7 +31,7 @@ Commands accept a project ID or a globally unique task ID. A task ID resolves th
 The version 1 interface provides these command groups:
 
 ```text
-pm projects list [filters]
+pm projects list [-a|--all] [filters]
 pm projects show <project-id>
 pm projects create --id <project-id> --title <text> --task-id-prefix <prefix> [options]
 pm projects edit <project-id> [options]
@@ -56,9 +56,11 @@ pm completion <bash|zsh|fish|powershell>
 
 `tags` lists the distinct tags in use across all discovered tasks with a per-tag usage count, most-used first, in human-readable and JSON form. It counts every task, including terminal ones, so it reflects the full tag vocabulary.
 
-`projects list` supports `--status`, `--priority`, and `--area`. By default it lists in-review projects first, then in-progress projects (in-review leads because it is closer to completion, matching the task list's grouping), then all other projects. Within each group it sorts positive integer priorities from lowest to highest, puts projects without a priority last, and breaks ties by creation date (oldest first) and then project ID. Human-readable output lists, in column order, the project ID, title, status, priority, creation date, and a compact completion progress bar. In JSON mode each project includes per-status task counts. The task-file path is not shown in the list; `projects show` reports it in project details.
+`projects list` supports `-a`/`--all`, `--status`, `--priority`, and `--area`. By default it shows only projects that are not finished (`idea`, `todo`, `in-progress`, `in-review`, `blocked`), because completed and abandoned projects accumulate without bound and would bury the work in flight. The `-a`/`--all` flag includes `done` and `cancelled` projects, and an explicit `--status` filter overrides the default — the same rule `tasks list` follows. By default it lists in-review projects first, then in-progress projects (in-review leads because it is closer to completion, matching the task list's grouping), then all other projects. Within each group it sorts positive integer priorities from lowest to highest, puts projects without a priority last, and breaks ties by creation date (oldest first) and then project ID. Human-readable output lists, in column order, the project ID, title, status, priority, creation date, and a compact completion progress bar. In JSON mode each project includes per-status task counts. The task-file path is not shown in the list; `projects show` reports it in project details.
 
 `projects show` reports a project's stored fields, its task-file path, and a task summary: a completion progress bar (tasks done out of the countable total, with a percentage) and a per-status breakdown in lifecycle order so project progress is visible. In JSON mode the same information is available as task counts.
+
+`projects show` also reports the project's Markdown document, which by convention is `<project-id>.md` beside the task file. Human-readable output appends it, rendered for the terminal behind a labeled rule: headings, list bullets and task checkboxes, block quotes, thematic breaks, and code blocks are formatted, and emphasis, code span, and link markup is consumed rather than printed. Rendering uses ANSI styling only when writing to a terminal without `NO_COLOR`; otherwise the same structure is rendered in plain text. JSON mode carries `doc_path` and the document's Markdown source in `doc`, unrendered, since a consumer that wants Markdown wants the source. A project without a document reports neither field and prints no separator.
 
 Completion progress measures the work that can still be finished. The denominator is the countable total: every task except those in `cancelled`. Backlog tasks count, because every task is expected to reach either `done` or `cancelled` and unfinished work is unfinished wherever it sits. Cancelled tasks do not, because work that will never be finished would otherwise hold a project below 100% permanently. Human-readable output states the excluded cancelled count alongside the ratio, and a project whose tasks are all cancelled reports that nothing is countable rather than a zero-percent bar. JSON output carries the raw per-status counts and the cancellation-inclusive `total`, so any other ratio can be derived from it.
 
