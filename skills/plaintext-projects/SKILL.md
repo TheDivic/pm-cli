@@ -86,7 +86,7 @@ denominator, `cancelled` does not.
 ## Writing
 
 ```sh
-pm tasks add -p <project-id> -t <title> [-s <status>] [--priority <n>] \
+pm tasks add [-p <project-id>] -t <title> [-s <status>] [--priority <n>] \
              [--due <YYYY-MM-DD>] [-g <tag>]... [--parent <task-id>] \
              [--description-file <file|->]
 pm tasks edit <task-id>... [-t <title>] [--priority <n> | --clear-priority] \
@@ -109,6 +109,10 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
 
 - `tasks add` assigns the next task ID and today's `created` date. **Default
   status is `backlog`** — pass `-s todo` for work that is actually queued.
+- **`-p` is optional: without it the task goes to the `inbox` project**, created
+  under the root on first use. Use this when the user hands you work that does
+  not clearly belong to a project — capture it rather than guessing a project or
+  stopping to ask. Say where it landed, and file it later with `tasks edit`.
 - **One command changes one thing.** There is no combined "add and start"; run
   `tasks add` then `tasks status`.
 - **`edit`, `status`, `block`, and `unblock` take several task IDs at once** and

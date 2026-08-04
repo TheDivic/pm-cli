@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
 	"github.com/TheDivic/plaintext-projects/internal/model"
 	"github.com/TheDivic/plaintext-projects/internal/mutate"
 	"github.com/TheDivic/plaintext-projects/internal/pmerr"
@@ -32,6 +35,52 @@ func readDescription(cmd *cobra.Command, file string) (text string, provided boo
 	return string(b), true, nil
 }
 
+// The inbox is where a task goes when the caller does not name a project. It
+// exists so capture is never blocked on deciding where something belongs: the
+// cost of that decision is what stops people (and agents) from writing the task
+// down at all. Filing it later is an ordinary edit.
+const (
+	inboxProjectID = "inbox"
+	inboxPrefix    = "in"
+	inboxTitle     = "Inbox"
+)
+
+// resolveOrCreateInbox returns the inbox task file, creating it under the
+// discovery root the first time. It is created in-progress because an inbox is
+// never "done" and never speculative — it is continuously worked.
+func resolveOrCreateInbox(cmd *cobra.Command, opts *GlobalOptions, clk clock.Clock) (string, error) {
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
+	if err != nil {
+		return "", pmerr.IO("cannot discover projects: %v", err)
+	}
+	for i := range ws.Projects {
+		if ws.Projects[i].ID() == inboxProjectID {
+			return ws.Projects[i].AbsPath, nil
+		}
+	}
+
+	today := clk.Today()
+	doc := &model.Document{
+		SchemaVersion: model.SchemaVersion,
+		Project: model.Project{
+			ID: inboxProjectID, Title: inboxTitle, TaskIDPrefix: inboxPrefix,
+			Status: model.ProjectInProgress, Created: today, Started: today,
+		},
+		Tasks: []model.Task{},
+	}
+	target := filepath.Join(rootOrCWD(opts), inboxProjectID, inboxProjectID+".tasks.yaml")
+	abs, err := writeNewProject(cmd, opts, target, doc)
+	if err != nil {
+		return "", err
+	}
+	// A note, not a result: stdout carries exactly one record per command, and in
+	// JSON mode the add result names the project anyway.
+	if !opts.JSON {
+		fmt.Fprintf(cmd.ErrOrStderr(), "note: created the %s project at %s\n", inboxProjectID, target)
+	}
+	return abs, nil
+}
+
 // ---- tasks add ----
 
 func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
@@ -42,10 +91,23 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a task to a project",
-		Args:  cobra.NoArgs,
+		Short: "Add a task to a project, or to the inbox when no project is named",
+		Long: "Add a task to a project.\n\n" +
+			"Without --project the task goes to the inbox: a project with ID \"inbox\",\n" +
+			"created under the discovery root the first time it is needed. Capturing\n" +
+			"work should never be blocked on deciding where it belongs; move it later\n" +
+			"with an ordinary edit.",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := resolveProject(opts, project)
+			projectID := project
+			var path string
+			var err error
+			if projectID == "" {
+				projectID = inboxProjectID
+				path, err = resolveOrCreateInbox(cmd, opts, clk)
+			} else {
+				path, err = resolveProject(opts, projectID)
+			}
 			if err != nil {
 				return err
 			}
@@ -69,12 +131,12 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 				return err
 			}
 			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "added task", ID: newID, Project: project, Path: path,
+				Kind: "added task", ID: newID, Project: projectID, Path: path,
 			})
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&project, "project", "p", "", "project ID (required)")
+	f.StringVarP(&project, "project", "p", "", "project ID (default: the inbox project)")
 	f.StringVarP(&title, "title", "t", "", "task title (required)")
 	f.StringVar(&descFile, "description-file", "", "read description from a file, or - for stdin")
 	f.StringVarP(&status, "status", "s", "backlog", "initial task status")
@@ -82,7 +144,6 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	f.StringVar(&parent, "parent", "", "parent task ID")
 	f.StringVar(&due, "due", "", "due date (YYYY-MM-DD)")
 	f.StringSliceVarP(&tags, "tag", "g", nil, "tag (repeatable)")
-	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("title")
 	return cmd
 }

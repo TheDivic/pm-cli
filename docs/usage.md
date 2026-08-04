@@ -89,7 +89,7 @@ pm projects status website blocked --reason "waiting on brand assets"
 pm tasks list [-a|--all] [--project p]... [--status s]... [--tag t]... [--area a]... \
     [--parent <task-id>] [--blocked] [--due-before <date>] [--due-on <date>]
 pm tasks show <task-id>
-pm tasks add --project <project-id> --title <text> \
+pm tasks add [--project <project-id>] --title <text> \
     [--description-file <file|->] [--status <s>] [--priority <n>] \
     [--parent <task-id>] [--due <date>] [--tag <t>]...
 pm tasks edit <task-id>... [--title <t>] [--description-file <file|->] \
@@ -107,6 +107,11 @@ pm tasks delete <task-id>... [--cascade]
   overrides. Filters combine with AND; repeated values combine with OR.
 - **add** — assigns the next task ID and the `created` date. Default status is
   `backlog`. `--description-file -` reads the description from standard input.
+- **inbox** — omit `--project` and the task lands in the `inbox` project, created
+  under the root the first time it is needed (`inbox/inbox.tasks.yaml`, prefix
+  `in`, status `in-progress`). Capture first, file later:
+  `pm tasks edit in-004 --parent web-001` or move it by hand once you know where
+  it belongs.
 - **status** — manages lifecycle dates and the mutually exclusive terminal and
   blocking fields. `cancelled` requires `--reason`.
 - **block / unblock** — record or remove a blocking condition without changing
@@ -125,6 +130,7 @@ pm tasks delete <task-id>... [--cascade]
 
 ```sh
 pm tasks add --project website --title "Design the header" --priority 1 --tag design
+pm tasks add --title "Call the dentist"          # no project -> the inbox
 echo "Acceptance: passes Lighthouse." | pm tasks add --project website --title "Audit perf" --description-file -
 pm tasks status web-001 in-progress
 pm tasks status web-001 web-002 web-003 done     # one status, several tasks

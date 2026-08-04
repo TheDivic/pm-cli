@@ -41,7 +41,7 @@ pm projects format [<project-id> | --all]
 
 pm tasks list [filters]
 pm tasks show <task-id>
-pm tasks add --project <project-id> --title <text> [options]
+pm tasks add [--project <project-id>] --title <text> [options]
 pm tasks edit <task-id>... [options]
 pm tasks delete <task-id>... [--cascade]
 pm tasks status <task-id>... <status> [--reason <sentence>]
@@ -75,6 +75,8 @@ By default `tasks list` shows only open tasks (`backlog`, `todo`, `in-progress`,
 Task list output is grouped by status for display: in-review first, then in-progress (in-review leads because it is closer to completion), then todo, backlog, done, and cancelled. Within each status group it sorts by task priority (lowest number first, tasks without a priority last), breaking ties by file order so the first ready task in a status group is next. Human-readable output shows the project ID and a priority column; JSON identifies the project by ID and includes the priority and tags.
 
 `tasks add` accepts optional `--description-file`, `--status`, `--priority`, `--parent`, `--due`, and repeated `--tag` flags. Its default status is `backlog`, so newly captured work starts speculative until accepted into scope. The CLI assigns `created` and the next task ID. `--description-file -` reads the description from standard input.
+
+`--project` is optional. Without it the task goes to the inbox: the project whose ID is `inbox`. When no such project exists under the discovery root, `tasks add` creates it at `<root>/inbox/inbox.tasks.yaml` with the title `Inbox`, the task-ID prefix `in`, and status `in-progress`, then adds the task. Capture must never be blocked on deciding where work belongs; filing it afterwards is an ordinary edit. Creating the inbox is reported as a note on standard error, never as a second record on standard output, so a command still emits exactly one result. If another project already holds the `inbox` ID or the `in` prefix, the existing project is used or the collision is reported, and no file is written.
 
 Common flags provide single-letter shorthands: `-p` (`--project`), `-t` (`--title`), `-s` (`--status`), `-r` (`--reason`), `-g` (`--tag`), and `-a` (`--all`).
 
