@@ -370,3 +370,45 @@ func TestProjectsShowUnknownIsUsageError(t *testing.T) {
 		t.Fatalf("exit = %d, want 2", code)
 	}
 }
+
+func TestTasksListUnknownProjectIsUsageError(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)
+
+	// An unknown ID must not read as "this project has no open tasks".
+	code, stdout, stderr := run("--root", root, "tasks", "list", "-p", "nope")
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (stdout: %q)", code, stdout)
+	}
+	if !strings.Contains(stderr, "nope") {
+		t.Fatalf("error should name the unknown project: %q", stderr)
+	}
+
+	// A known ID still works, and one unknown value among several still fails.
+	if code, _, _ := run("--root", root, "tasks", "list", "-p", "demo"); code != 0 {
+		t.Fatalf("known project: exit = %d, want 0", code)
+	}
+	if code, _, _ := run("--root", root, "tasks", "list", "-p", "demo", "-p", "nope"); code != 2 {
+		t.Fatalf("one unknown among several: exit = %d, want 2", code)
+	}
+}
+
+func TestTasksListUnknownProjectJSONError(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), projectWithTasks)
+
+	code, _, stderr := run("--json", "--root", root, "tasks", "list", "-p", "nope")
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2", code)
+	}
+	var detail struct {
+		Code    string `json:"code"`
+		Project string `json:"project"`
+	}
+	if err := json.Unmarshal([]byte(stderr), &detail); err != nil {
+		t.Fatalf("stderr is not JSON: %v (%q)", err, stderr)
+	}
+	if detail.Code != "usage" || detail.Project != "nope" {
+		t.Fatalf("got %+v, want usage/nope", detail)
+	}
+}

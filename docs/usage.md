@@ -55,8 +55,8 @@ pm projects edit <project-id> [--title <t>] [--priority <n> | --clear-priority] 
 pm projects status <project-id> <status> [--reason <sentence>]
 ```
 
-- **list** — in-progress projects first, then others; within a group by
-  priority (lowest first, unset last), creation date, then ID. Columns: ID,
+- **list** — in-review projects first, then in-progress, then others; within a
+  group by priority (lowest first, unset last), creation date, then ID. Columns: ID,
   title, status, priority, creation date, and a completion progress bar. JSON
   adds per-status task counts.
 - **show** — full detail including areas, dates, blocking/cancellation, the

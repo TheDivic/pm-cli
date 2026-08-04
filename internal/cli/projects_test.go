@@ -246,3 +246,54 @@ func TestProjectsValidateUnknownIDIsUsageError(t *testing.T) {
 		t.Fatalf("exit = %d, want 2 (stderr: %s)", code, stderr)
 	}
 }
+
+// projectInReview exercises the in-review project status added alongside the
+// task status of the same name.
+const projectInReview = `schema-version: 1
+
+project:
+  id: review
+  title: Under Review
+  task-id-prefix: rv
+  status: in-review
+  created: "2026-07-31"
+  started: "2026-07-31"
+
+tasks: []
+`
+
+func TestProjectInReviewValidates(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "review", "review.tasks.yaml"), projectInReview)
+
+	if code, stdout, stderr := run("--root", root, "projects", "validate"); code != 0 {
+		t.Fatalf("exit = %d, want 0 (stdout: %s stderr: %s)", code, stdout, stderr)
+	}
+	if code, _, stderr := run("--root", root, "projects", "status", "review", "in-review"); code != 0 {
+		t.Fatalf("status transition exit = %d: %s", code, stderr)
+	}
+}
+
+func TestProjectsListPutsInReviewFirst(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
+	writeFile(t, filepath.Join(root, "review", "review.tasks.yaml"), projectInReview)
+
+	_, stdout, _ := run("--root", root, "projects", "list")
+	review, progress := strings.Index(stdout, "review"), strings.Index(stdout, "demo")
+	if review < 0 || progress < 0 {
+		t.Fatalf("both projects should be listed: %q", stdout)
+	}
+	if review > progress {
+		t.Fatalf("in-review should sort before in-progress:\n%s", stdout)
+	}
+}
+
+func TestProjectsStatusRejectsUnknownStatus(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	if code, _, _ := run("--root", root, "projects", "status", "demo", "in-revue"); code != 1 {
+		t.Fatalf("typo status: exit = %d, want 1", code)
+	}
+}

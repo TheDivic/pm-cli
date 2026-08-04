@@ -52,7 +52,7 @@ pm tags
 
 `tags` lists the distinct tags in use across all discovered tasks with a per-tag usage count, most-used first, in human-readable and JSON form. It counts every task, including terminal ones, so it reflects the full tag vocabulary.
 
-`projects list` supports `--status`, `--priority`, and `--area`. By default it lists in-progress projects first and then all other projects. Within each group it sorts positive integer priorities from lowest to highest, puts projects without a priority last, and breaks ties by creation date (oldest first) and then project ID. Human-readable output lists, in column order, the project ID, title, status, priority, creation date, and a compact completion progress bar. In JSON mode each project includes per-status task counts. The task-file path is not shown in the list; `projects show` reports it in project details.
+`projects list` supports `--status`, `--priority`, and `--area`. By default it lists in-review projects first, then in-progress projects (in-review leads because it is closer to completion, matching the task list's grouping), then all other projects. Within each group it sorts positive integer priorities from lowest to highest, puts projects without a priority last, and breaks ties by creation date (oldest first) and then project ID. Human-readable output lists, in column order, the project ID, title, status, priority, creation date, and a compact completion progress bar. In JSON mode each project includes per-status task counts. The task-file path is not shown in the list; `projects show` reports it in project details.
 
 `projects show` reports a project's stored fields, its task-file path, and a task summary: a completion progress bar (tasks done out of the countable total, with a percentage) and a per-status breakdown in lifecycle order so project progress is visible. In JSON mode the same information is available as task counts.
 
@@ -64,7 +64,7 @@ Completion progress measures the work that can still be finished. The denominato
 
 `projects status` applies a valid lifecycle transition and manages its dates. Entering `in-progress` sets `started` only when absent. Entering `done` sets `completed`. Entering `blocked` or `cancelled` requires `--reason` and records the corresponding date. Leaving `blocked` removes the blocking record.
 
-`tasks list` supports `--project`, `--status`, `--area`, `--tag`, `--parent`, `--blocked`, `--due-before`, and `--due-on`. Multiple filters combine with logical AND. Repeated values for the same filter combine with logical OR.
+`tasks list` supports `--project`, `--status`, `--area`, `--tag`, `--parent`, `--blocked`, `--due-before`, and `--due-on`. Multiple filters combine with logical AND. Repeated values for the same filter combine with logical OR. A `--project` value that matches no discovered project is a usage error, not an empty result, so a mistyped ID cannot be read as a project with no open tasks.
 
 By default `tasks list` shows only open tasks (`backlog`, `todo`, `in-progress`, `in-review`) so the overview focuses on actionable work. The `-a`/`--all` flag includes `done` and `cancelled` tasks, and an explicit `--status` filter overrides the default.
 

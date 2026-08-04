@@ -283,11 +283,25 @@ type projectSummary struct {
 	TaskCounts map[string]int `json:"task_counts"`
 }
 
+// projectStatusRank orders projects for list display: active work first, with
+// in-review ahead of in-progress because it is closer to completion, then every
+// other status. This mirrors the task list's status grouping.
+func projectStatusRank(s model.ProjectStatus) int {
+	switch s {
+	case model.ProjectInReview:
+		return 0
+	case model.ProjectInProgress:
+		return 1
+	default:
+		return 2
+	}
+}
+
 // listOrder returns the successfully decoded projects sorted for display:
-// in-progress projects first, then all others. Within each group, prioritized
-// projects come first (lowest number = highest priority), projects without a
-// priority last, with ties broken by creation date (oldest first) and then
-// project ID for deterministic output.
+// in-review projects first, then in-progress, then all others. Within each
+// group, prioritized projects come first (lowest number = highest priority),
+// projects without a priority last, with ties broken by creation date (oldest
+// first) and then project ID for deterministic output.
 func listOrder(ws *discover.Workspace) []*discover.Project {
 	out := make([]*discover.Project, 0, len(ws.Projects))
 	for i := range ws.Projects {
@@ -297,8 +311,8 @@ func listOrder(ws *discover.Workspace) []*discover.Project {
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		a, b := out[i].Doc.Project, out[j].Doc.Project
-		if ai, bi := a.Status == model.ProjectInProgress, b.Status == model.ProjectInProgress; ai != bi {
-			return ai // in-progress projects sort first
+		if ra, rb := projectStatusRank(a.Status), projectStatusRank(b.Status); ra != rb {
+			return ra < rb // active projects sort first
 		}
 		if (a.Priority == nil) != (b.Priority == nil) {
 			return a.Priority != nil // prioritized projects sort first

@@ -118,9 +118,9 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
 ### Lifecycle
 
 Statuses — tasks: `backlog`, `todo`, `in-progress`, `in-review`, `done`,
-`cancelled`. Projects: `idea`, `todo`, `in-progress`, `blocked`, `done`,
-`cancelled` (projects have no `in-review`; tasks have no `blocked` status — see
-below).
+`cancelled`. Projects: `idea`, `todo`, `in-progress`, `in-review`, `blocked`,
+`done`, `cancelled` (projects have no `backlog`; tasks have no `blocked` status
+— see below).
 
 `pm` owns every date; never pass or set one:
 
