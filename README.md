@@ -1,5 +1,7 @@
 # Plaintext Projects (`pm`)
 
+![pm in a terminal: listing projects with progress bars, listing ranked tasks, capturing a task into the inbox, moving two tasks to in-progress at once, showing a project with its rendered Markdown document, and emitting JSON for agents](docs/demo.gif)
+
 `pm` is a standalone command-line tool for managing projects and tasks stored as
 readable `*.tasks.yaml` files. There is no hosted application and no database:
 plain files are the source of truth and Git is the change history. `pm` is built
@@ -8,8 +10,6 @@ for both people (concise terminal output) and LLM agents (structured `--json`).
 > **Status:** the task format and CLI contract are frozen at schema version 1 and
 > live in [`docs/spec/`](docs/spec/); this repository implements the `pm`
 > executable against them.
-
-![pm in a terminal: listing projects with progress bars, listing ranked tasks, capturing a task into the inbox, moving two tasks to in-progress at once, showing a project with its rendered Markdown document, and emitting JSON for agents](docs/demo.gif)
 
 ## What it does
 
