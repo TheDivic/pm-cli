@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -22,6 +23,24 @@ func optField(w io.Writer, label, value string) {
 }
 
 func joinComma(v []string) string { return strings.Join(v, ", ") }
+
+// useColor reports whether ANSI styling is appropriate for w. Per the CLI
+// specification, color is used only when the destination is a terminal and
+// NO_COLOR is unset — so piped output and test buffers stay plain.
+func useColor(w io.Writer) bool {
+	if _, set := os.LookupEnv("NO_COLOR"); set {
+		return false
+	}
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return false
+	}
+	return info.Mode()&os.ModeCharDevice != 0
+}
 
 // filledCells returns how many of width cells to fill for done out of total,
 // reserving a full bar for true completion and showing at least one cell for

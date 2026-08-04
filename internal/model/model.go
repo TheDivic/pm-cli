@@ -14,6 +14,7 @@ const (
 	ProjectIdea       ProjectStatus = "idea"
 	ProjectTodo       ProjectStatus = "todo"
 	ProjectInProgress ProjectStatus = "in-progress"
+	ProjectInReview   ProjectStatus = "in-review"
 	ProjectBlocked    ProjectStatus = "blocked"
 	ProjectCancelled  ProjectStatus = "cancelled"
 	ProjectDone       ProjectStatus = "done"
@@ -22,11 +23,34 @@ const (
 // Valid reports whether s is a recognized project status.
 func (s ProjectStatus) Valid() bool {
 	switch s {
-	case ProjectIdea, ProjectTodo, ProjectInProgress, ProjectBlocked, ProjectCancelled, ProjectDone:
+	case ProjectIdea, ProjectTodo, ProjectInProgress, ProjectInReview,
+		ProjectBlocked, ProjectCancelled, ProjectDone:
 		return true
 	default:
 		return false
 	}
+}
+
+// ProjectStatuses lists every project status in lifecycle order. Completion and
+// shell completion both read it, so a new status only has to be added once.
+var ProjectStatuses = []ProjectStatus{
+	ProjectIdea,
+	ProjectTodo,
+	ProjectInProgress,
+	ProjectInReview,
+	ProjectBlocked,
+	ProjectDone,
+	ProjectCancelled,
+}
+
+// TaskStatuses lists every task status in lifecycle order.
+var TaskStatuses = []TaskStatus{
+	TaskBacklog,
+	TaskTodo,
+	TaskInProgress,
+	TaskInReview,
+	TaskDone,
+	TaskCancelled,
 }
 
 // TaskStatus enumerates the allowed task lifecycle states.

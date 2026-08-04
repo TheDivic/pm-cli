@@ -32,7 +32,9 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
-	root.CompletionOptions.DisableDefaultCmd = true
+	// `pm completion <shell>` generates the shell script; the completers wired
+	// below make the suggestions reflect the actual task files.
+	root.CompletionOptions.DisableDefaultCmd = false
 
 	pf := root.PersistentFlags()
 	pf.StringVar(&opts.Root, "root", "", "discovery root (default: $PM_ROOT or current directory)")
@@ -43,5 +45,7 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	root.AddCommand(newProjectsCmd(opts, clk))
 	root.AddCommand(newTasksCmd(opts, clk))
 	root.AddCommand(newTagsCmd(opts))
+
+	completeCommandTree(root, opts)
 	return root
 }

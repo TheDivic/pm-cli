@@ -44,7 +44,7 @@ prefix, so most commands accept a task ID without a project path.
 ## Projects
 
 ```sh
-pm projects list [--status s]... [--priority n]... [--area a]...
+pm projects list [-a|--all] [--status s]... [--priority n]... [--area a]...
 pm projects show <project-id>
 pm projects validate [<project-id> | --all]
 pm projects format [<project-id> | --all]
@@ -55,12 +55,17 @@ pm projects edit <project-id> [--title <t>] [--priority <n> | --clear-priority] 
 pm projects status <project-id> <status> [--reason <sentence>]
 ```
 
-- **list** — in-progress projects first, then others; within a group by
-  priority (lowest first, unset last), creation date, then ID. Columns: ID,
-  title, status, priority, creation date, and a completion progress bar. JSON
-  adds per-status task counts.
+- **list** — hides `done` and `cancelled` projects by default; `-a`/`--all`
+  includes them and an explicit `--status` overrides. In-review projects come
+  first, then in-progress, then others; within a group by priority (lowest
+  first, unset last), creation date, then ID. Columns: ID, title, status,
+  priority, creation date, and a completion progress bar. JSON adds per-status
+  task counts.
 - **show** — full detail including areas, dates, blocking/cancellation, the
-  task-file path, and a per-status task breakdown.
+  task-file path, a per-status task breakdown, and the project's Markdown
+  document (`<project-id>.md`, beside the task file) rendered for the terminal.
+  JSON returns `doc_path` and the raw Markdown in `doc` instead of the
+  rendering. Color is used only on a terminal and never when `NO_COLOR` is set.
 
 Progress counts every task that can still be finished. Backlog tasks are part of
 the denominator — unfinished work is unfinished wherever it sits — but cancelled
@@ -89,15 +94,16 @@ pm projects status website blocked --reason "waiting on brand assets"
 pm tasks list [-a|--all] [--project p]... [--status s]... [--tag t]... [--area a]... \
     [--parent <task-id>] [--blocked] [--due-before <date>] [--due-on <date>]
 pm tasks show <task-id>
-pm tasks add --project <project-id> --title <text> \
+pm tasks add [--project <project-id>] --title <text> \
     [--description-file <file|->] [--status <s>] [--priority <n>] \
     [--parent <task-id>] [--due <date>] [--tag <t>]...
-pm tasks edit <task-id> [--title <t>] [--description-file <file|->] \
+pm tasks edit <task-id>... [--title <t>] [--description-file <file|->] \
     [--priority <n> | --clear-priority] [--due <date> | --clear-due] \
     [--add-tag <t>]... [--remove-tag <t>]... [--parent <id> | --clear-parent]
-pm tasks status <task-id> <status> [--reason <sentence>]
-pm tasks block <task-id> --reason <sentence> [--task <task-id>]...
-pm tasks unblock <task-id>
+pm tasks status <task-id>... <status> [--reason <sentence>]
+pm tasks block <task-id>... --reason <sentence> [--task <task-id>]...
+pm tasks unblock <task-id>...
+pm tasks delete <task-id>... [--cascade]
 ```
 
 - **list** — grouped by status (in-review, in-progress, todo, backlog, done,
@@ -106,15 +112,34 @@ pm tasks unblock <task-id>
   overrides. Filters combine with AND; repeated values combine with OR.
 - **add** — assigns the next task ID and the `created` date. Default status is
   `backlog`. `--description-file -` reads the description from standard input.
+- **inbox** — omit `--project` and the task lands in the `inbox` project, created
+  under the root the first time it is needed (`inbox/inbox.tasks.yaml`, prefix
+  `in`, status `in-progress`). Capture first, file later:
+  `pm tasks edit in-004 --parent web-001` or move it by hand once you know where
+  it belongs.
 - **status** — manages lifecycle dates and the mutually exclusive terminal and
   blocking fields. `cancelled` requires `--reason`.
 - **block / unblock** — record or remove a blocking condition without changing
   the task status.
+- **delete** — removes tasks outright. Refuses when another task points at one
+  being deleted (as a parent or a blocker), naming the referrers; `--cascade`
+  removes the subtree and drops those references. Prefer `status <id> cancelled`
+  when the outcome should stay on the record — a delete is only recoverable
+  through Git.
+- **batch** — `edit`, `status`, `block`, and `unblock` take several task IDs and
+  apply the same change to each. For `status` the last argument is the status and
+  everything before it is an ID. Every ID is resolved before anything is written,
+  so a typo changes nothing; tasks are then written one file at a time, so a
+  file is all-or-nothing but a multi-file batch is not. Tasks already committed
+  when a later file fails are named on stderr. `--title` stays single-task.
 
 ```sh
 pm tasks add --project website --title "Design the header" --priority 1 --tag design
+pm tasks add --title "Call the dentist"          # no project -> the inbox
 echo "Acceptance: passes Lighthouse." | pm tasks add --project website --title "Audit perf" --description-file -
 pm tasks status web-001 in-progress
+pm tasks status web-001 web-002 web-003 done     # one status, several tasks
+pm tasks edit web-001 web-002 --add-tag q3       # one edit, several tasks
 pm tasks block web-002 --reason "depends on the header" --task web-001
 pm tasks list --project website            # open work only
 pm tasks list --project website --status done
@@ -129,14 +154,34 @@ pm tags
 Lists the distinct tags in use across all tasks with a per-tag usage count,
 most-used first, in human-readable and `--json` form.
 
+## Shell completion
+
+```sh
+pm completion bash > /etc/bash_completion.d/pm       # bash
+pm completion zsh  > "${fpath[1]}/_pm"               # zsh
+pm completion fish > ~/.config/fish/completions/pm.fish
+pm completion powershell | Out-String | Invoke-Expression
+```
+
+Completion is dynamic — it reads the discovery root as you type, so task IDs
+come annotated with status and title, project IDs with their titles, and `--tag`
+and `--area` offer the vocabulary already in use. `pm tasks status <TAB>` offers
+task IDs; from the second argument on it offers statuses too, and IDs you have
+already typed drop out of the list. Set `PM_ROOT` so completion works from any
+directory.
+
 ## Mutation safety
 
 Every write follows a fixed sequence: lock the target file, read and parse it,
 validate the document, apply one change, validate the result, render canonical
 bytes, and atomically replace the file. Any error before the final write leaves
 the original bytes unchanged, and a per-file lock prevents concurrent commands
-in one checkout from colliding. There is no delete command; retire unfinished
-work by cancelling it.
+in one checkout from colliding.
+
+`tasks delete` is the one command that removes history rather than recording an
+outcome. Cancelling (`tasks status <id> cancelled -r "<why>"`) remains the way
+to retire work you want to stay legible; deletes are recoverable only through
+Git.
 
 ## Agent and automation use
 

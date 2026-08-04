@@ -71,7 +71,7 @@ The `project` mapping uses these fields in canonical order:
 
 `task-id-prefix` is required. It is a unique, immutable lowercase kebab-case prefix used to form task IDs. Renaming the project, directory, or project ID does not change the prefix or existing task IDs.
 
-`status` is required and accepts `idea`, `todo`, `in-progress`, `blocked`, `cancelled`, or `done`. Project status is independent of individual task status.
+`status` is required and accepts `idea`, `todo`, `in-progress`, `in-review`, `blocked`, `cancelled`, or `done`. Project status is independent of individual task status. `in-review` means the project's work is finished and awaiting validation or acceptance, matching the task status of the same name; it carries no dates of its own.
 
 `priority` is optional and accepts a positive integer. Lower numbers have higher priority, so `1` is highest. Equal values are allowed. Projects without a priority sort after prioritized projects.
 

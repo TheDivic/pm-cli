@@ -24,6 +24,7 @@ func newTasksCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	cmd.AddCommand(newTasksShowCmd(opts))
 	cmd.AddCommand(newTasksAddCmd(opts, clk))
 	cmd.AddCommand(newTasksEditCmd(opts))
+	cmd.AddCommand(newTasksDeleteCmd(opts))
 	cmd.AddCommand(newTasksStatusCmd(opts, clk))
 	cmd.AddCommand(newTasksBlockCmd(opts, clk))
 	cmd.AddCommand(newTasksUnblockCmd(opts))
@@ -36,6 +37,26 @@ func loadRefs(opts *GlobalOptions) ([]query.TaskRef, *discover.Workspace, error)
 		return nil, nil, pmerr.IO("cannot discover projects: %v", err)
 	}
 	return query.Flatten(ws), ws, nil
+}
+
+// requireKnownProjects rejects a --project filter naming a project that does not
+// exist under the discovery root. Without this an unknown ID silently yields an
+// empty list, which reads as "this project has no open tasks" rather than as the
+// typo it usually is.
+func requireKnownProjects(ws *discover.Workspace, ids []string) error {
+	for _, id := range ids {
+		found := false
+		for i := range ws.Projects {
+			if ws.Projects[i].ID() == id {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return pmerr.Usage("no project with id %q under the discovery root", id).WithProject(id)
+		}
+	}
+	return nil
 }
 
 // openTaskStatuses are the non-terminal statuses shown by tasks list by
@@ -62,8 +83,11 @@ func newTasksListCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "List tasks across projects, with optional filters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			refs, _, err := loadRefs(opts)
+			refs, ws, err := loadRefs(opts)
 			if err != nil {
+				return err
+			}
+			if err := requireKnownProjects(ws, f.Projects); err != nil {
 				return err
 			}
 			if cmd.Flags().Changed("blocked") {

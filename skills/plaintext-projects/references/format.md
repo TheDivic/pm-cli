@@ -71,7 +71,7 @@ Canonical order: `id`, `title`, `task-id-prefix`, `status`, `priority`, `areas`,
 | `id` | yes | stable lowercase kebab-case; unique per discovery root; must equal the filename stem. A title change never changes it. |
 | `title` | yes | nonempty, single-line |
 | `task-id-prefix` | yes | unique, **immutable** lowercase kebab-case; surviving renames of the project, ID, or directory |
-| `status` | yes | `idea`, `todo`, `in-progress`, `blocked`, `cancelled`, `done` — independent of task statuses |
+| `status` | yes | `idea`, `todo`, `in-progress`, `in-review`, `blocked`, `cancelled`, `done` — independent of task statuses |
 | `priority` | no | positive integer, `1` highest; ties allowed; unset sorts last |
 | `areas` | no | unique lowercase kebab-case slugs, each resolving to `areas/<slug>.md` |
 | `created` | yes | when the record was created |

@@ -58,7 +58,7 @@ need a project or a path — just the ID.
 ## Reading
 
 ```sh
-pm projects list [-s <status>]... [--priority <n>]... [--area <a>]...
+pm projects list [-a] [-s <status>]... [--priority <n>]... [--area <a>]...
 pm projects show <project-id>
 pm projects validate [<project-id> | --all]
 pm tasks list [-a] [-p <project>]... [-s <status>]... [-g <tag>]... [--area <a>]... \
@@ -75,8 +75,13 @@ pm tags
   backlog, done, cancelled), then priority (1 is highest, unset last), then file
   order. To answer "what should I work on next?", run `pm tasks list` and take
   the top row. Do not re-sort.
-- `projects list` orders in-progress projects first, then by priority, creation
-  date, ID.
+- `projects list` **hides `done` and `cancelled` projects by default** (`-a`
+  includes them; an explicit `-s` overrides). It orders in-review projects
+  first, then in-progress, then the rest — and within each group by priority,
+  creation date, ID.
+- `projects show` also returns the project's Markdown document. In `--json` it
+  is the raw source under `doc`, with `doc_path` alongside — read that instead
+  of opening the file yourself.
 - `pm tags` lists the tag vocabulary with usage counts — check it before
   inventing a new tag.
 
@@ -86,15 +91,16 @@ denominator, `cancelled` does not.
 ## Writing
 
 ```sh
-pm tasks add -p <project-id> -t <title> [-s <status>] [--priority <n>] \
+pm tasks add [-p <project-id>] -t <title> [-s <status>] [--priority <n>] \
              [--due <YYYY-MM-DD>] [-g <tag>]... [--parent <task-id>] \
              [--description-file <file|->]
-pm tasks edit <task-id> [-t <title>] [--priority <n> | --clear-priority] \
+pm tasks edit <task-id>... [-t <title>] [--priority <n> | --clear-priority] \
              [--due <date> | --clear-due] [--add-tag <t>]... [--remove-tag <t>]... \
              [--parent <id> | --clear-parent] [--description-file <file|->]
-pm tasks status <task-id> <status> [-r <reason>]
-pm tasks block <task-id> -r <reason> [--task <blocking-task-id>]...
-pm tasks unblock <task-id>
+pm tasks status <task-id>... <status> [-r <reason>]
+pm tasks block <task-id>... -r <reason> [--task <blocking-task-id>]...
+pm tasks unblock <task-id>...
+pm tasks delete <task-id>... [--cascade]
 
 pm projects create --id <id> -t <title> --task-id-prefix <prefix> \
              [-s <status>] [--priority <n>] [--due <date>] [--area <a>]... [--path <file>]
@@ -108,19 +114,33 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
 
 - `tasks add` assigns the next task ID and today's `created` date. **Default
   status is `backlog`** — pass `-s todo` for work that is actually queued.
+- **`-p` is optional: without it the task goes to the `inbox` project**, created
+  under the root on first use. Use this when the user hands you work that does
+  not clearly belong to a project — capture it rather than guessing a project or
+  stopping to ask. Say where it landed, and file it later with `tasks edit`.
 - **One command changes one thing.** There is no combined "add and start"; run
   `tasks add` then `tasks status`.
-- **There is no delete.** Retire work with `tasks status <id> cancelled -r
-  "<why>"`. Do not delete tasks to "clean up".
+- **`edit`, `status`, `block`, and `unblock` take several task IDs at once** and
+  apply the same change to each: `pm tasks status web-001 web-002 done`. For
+  `status` the last argument is the status; everything before it is an ID. A bad
+  ID aborts before anything is written. IDs may span projects, but each file is
+  written separately, so a mid-batch failure can leave earlier files changed —
+  the committed IDs are named on stderr. `-t/--title` stays single-task.
+- **Prefer cancelling to deleting.** `tasks status <id> cancelled -r "<why>"`
+  keeps the outcome on the record; `tasks delete` destroys it and is recoverable
+  only through Git. Do not delete tasks to "clean up" — cancel them. Delete is
+  for records that should never have existed (a duplicate, a mistaken entry).
+  It refuses when another task points at the target as a parent or blocker;
+  `--cascade` removes the subtree and drops those references.
 - Multi-line descriptions come from a file or stdin, never an argument:
   `printf '%s\n' "..." | pm tasks add -p web -t "Audit" --description-file -`
 
 ### Lifecycle
 
 Statuses — tasks: `backlog`, `todo`, `in-progress`, `in-review`, `done`,
-`cancelled`. Projects: `idea`, `todo`, `in-progress`, `blocked`, `done`,
-`cancelled` (projects have no `in-review`; tasks have no `blocked` status — see
-below).
+`cancelled`. Projects: `idea`, `todo`, `in-progress`, `in-review`, `blocked`,
+`done`, `cancelled` (projects have no `backlog`; tasks have no `blocked` status
+— see below).
 
 `pm` owns every date; never pass or set one:
 

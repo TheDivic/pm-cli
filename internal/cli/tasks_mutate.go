@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/plaintext-projects/internal/discover"
 	"github.com/TheDivic/plaintext-projects/internal/model"
 	"github.com/TheDivic/plaintext-projects/internal/mutate"
 	"github.com/TheDivic/plaintext-projects/internal/pmerr"
@@ -32,6 +35,52 @@ func readDescription(cmd *cobra.Command, file string) (text string, provided boo
 	return string(b), true, nil
 }
 
+// The inbox is where a task goes when the caller does not name a project. It
+// exists so capture is never blocked on deciding where something belongs: the
+// cost of that decision is what stops people (and agents) from writing the task
+// down at all. Filing it later is an ordinary edit.
+const (
+	inboxProjectID = "inbox"
+	inboxPrefix    = "in"
+	inboxTitle     = "Inbox"
+)
+
+// resolveOrCreateInbox returns the inbox task file, creating it under the
+// discovery root the first time. It is created in-progress because an inbox is
+// never "done" and never speculative — it is continuously worked.
+func resolveOrCreateInbox(cmd *cobra.Command, opts *GlobalOptions, clk clock.Clock) (string, error) {
+	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
+	if err != nil {
+		return "", pmerr.IO("cannot discover projects: %v", err)
+	}
+	for i := range ws.Projects {
+		if ws.Projects[i].ID() == inboxProjectID {
+			return ws.Projects[i].AbsPath, nil
+		}
+	}
+
+	today := clk.Today()
+	doc := &model.Document{
+		SchemaVersion: model.SchemaVersion,
+		Project: model.Project{
+			ID: inboxProjectID, Title: inboxTitle, TaskIDPrefix: inboxPrefix,
+			Status: model.ProjectInProgress, Created: today, Started: today,
+		},
+		Tasks: []model.Task{},
+	}
+	target := filepath.Join(rootOrCWD(opts), inboxProjectID, inboxProjectID+".tasks.yaml")
+	abs, err := writeNewProject(cmd, opts, target, doc)
+	if err != nil {
+		return "", err
+	}
+	// A note, not a result: stdout carries exactly one record per command, and in
+	// JSON mode the add result names the project anyway.
+	if !opts.JSON {
+		fmt.Fprintf(cmd.ErrOrStderr(), "note: created the %s project at %s\n", inboxProjectID, target)
+	}
+	return abs, nil
+}
+
 // ---- tasks add ----
 
 func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
@@ -42,10 +91,23 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a task to a project",
-		Args:  cobra.NoArgs,
+		Short: "Add a task to a project, or to the inbox when no project is named",
+		Long: "Add a task to a project.\n\n" +
+			"Without --project the task goes to the inbox: a project with ID \"inbox\",\n" +
+			"created under the discovery root the first time it is needed. Capturing\n" +
+			"work should never be blocked on deciding where it belongs; move it later\n" +
+			"with an ordinary edit.",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			path, err := resolveProject(opts, project)
+			projectID := project
+			var path string
+			var err error
+			if projectID == "" {
+				projectID = inboxProjectID
+				path, err = resolveOrCreateInbox(cmd, opts, clk)
+			} else {
+				path, err = resolveProject(opts, projectID)
+			}
 			if err != nil {
 				return err
 			}
@@ -69,12 +131,12 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 				return err
 			}
 			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "added task", ID: newID, Project: project, Path: path,
+				Kind: "added task", ID: newID, Project: projectID, Path: path,
 			})
 		},
 	}
 	f := cmd.Flags()
-	f.StringVarP(&project, "project", "p", "", "project ID (required)")
+	f.StringVarP(&project, "project", "p", "", "project ID (default: the inbox project)")
 	f.StringVarP(&title, "title", "t", "", "task title (required)")
 	f.StringVar(&descFile, "description-file", "", "read description from a file, or - for stdin")
 	f.StringVarP(&status, "status", "s", "backlog", "initial task status")
@@ -82,7 +144,6 @@ func newTasksAddCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	f.StringVar(&parent, "parent", "", "parent task ID")
 	f.StringVar(&due, "due", "", "due date (YYYY-MM-DD)")
 	f.StringSliceVarP(&tags, "tag", "g", nil, "tag (repeatable)")
-	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("title")
 	return cmd
 }
@@ -97,15 +158,16 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 		clearPriority, clearDue, clearParent bool
 	)
 	cmd := &cobra.Command{
-		Use:   "edit <task-id>",
-		Short: "Edit a task's title, description, priority, due date, tags, and parent",
-		Args:  cobra.ExactArgs(1),
+		Use:   "edit <task-id>...",
+		Short: "Edit the title, description, priority, due date, tags, and parent of one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
 			if cmd.Flags().Changed("title") {
+				// A title names one specific outcome, so applying one to several
+				// tasks is a mistake rather than a bulk edit.
+				if len(args) > 1 {
+					return pmerr.Usage("--title applies to a single task; got %d task IDs", len(args))
+				}
 				e.Title = strp(title)
 			}
 			if desc, provided, derr := readDescription(cmd, descFile); derr != nil {
@@ -126,14 +188,10 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 			}
 			e.ClearParent = clearParent
 
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.EditTask(d, args[0], e)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "updated task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "updated task", "",
+				func(d *model.Document, id string) error {
+					return mutate.EditTask(d, id, e)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -150,28 +208,58 @@ func newTasksEditCmd(opts *GlobalOptions) *cobra.Command {
 	return cmd
 }
 
+// ---- tasks delete ----
+
+func newTasksDeleteCmd(opts *GlobalOptions) *cobra.Command {
+	var cascade bool
+	cmd := &cobra.Command{
+		Use:   "delete <task-id>...",
+		Short: "Delete one or more tasks",
+		Long: "Delete one or more tasks.\n\n" +
+			"Deleting removes the record and its history from the file; Git is the only\n" +
+			"way back. To retire work while keeping the outcome legible, cancel it\n" +
+			"instead: pm tasks status <task-id> cancelled --reason \"<why>\".\n\n" +
+			"A delete is refused when a task outside it points at one inside it, as a\n" +
+			"child or as a blocker. --cascade removes the whole subtree and drops those\n" +
+			"references from the tasks that remain.",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			targets, err := resolveTaskBatch(opts, args)
+			if err != nil {
+				return err
+			}
+			results, err := applyToTaskFiles(cmd.ErrOrStderr(), targets,
+				func(d *model.Document, ids []string) ([]string, error) {
+					return mutate.DeleteTasks(d, ids, cascade)
+				})
+			if err != nil {
+				return err
+			}
+			return reportTaskMutations(cmd.OutOrStdout(), opts.JSON, "deleted task", "", results)
+		},
+	}
+	cmd.Flags().BoolVar(&cascade, "cascade", false,
+		"also delete descendants and drop references from the tasks that remain")
+	return cmd
+}
+
 // ---- tasks status ----
 
 func newTasksStatusCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	var reason string
 	cmd := &cobra.Command{
-		Use:   "status <task-id> <status>",
-		Short: "Change a task's lifecycle status",
-		Args:  cobra.ExactArgs(2),
+		Use:   "status <task-id>... <status>",
+		Short: "Change the lifecycle status of one or more tasks",
+		Long: "Change the lifecycle status of one or more tasks.\n\n" +
+			"The final argument is the target status; every argument before it is a\n" +
+			"task ID. All named tasks move to the same status.",
+		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			status := model.TaskStatus(args[1])
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.TaskStatus(d, args[0], status, reason, clk)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "task", ID: args[0], Status: args[1], Path: path,
-			})
+			ids, status := args[:len(args)-1], model.TaskStatus(args[len(args)-1])
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), ids, "task", string(status),
+				func(d *model.Document, id string) error {
+					return mutate.TaskStatus(d, id, status, reason, clk)
+				})
 		},
 	}
 	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason (required for cancelled)")
@@ -186,22 +274,14 @@ func newTasksBlockCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 		blockers []string
 	)
 	cmd := &cobra.Command{
-		Use:   "block <task-id>",
-		Short: "Record a blocking condition on a task",
-		Args:  cobra.ExactArgs(1),
+		Use:   "block <task-id>...",
+		Short: "Record a blocking condition on one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.BlockTask(d, args[0], reason, blockers, clk)
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "blocked task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "blocked task", "",
+				func(d *model.Document, id string) error {
+					return mutate.BlockTask(d, id, reason, blockers, clk)
+				})
 		},
 	}
 	cmd.Flags().StringVarP(&reason, "reason", "r", "", "reason for the blockage (required)")
@@ -212,22 +292,14 @@ func newTasksBlockCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 
 func newTasksUnblockCmd(opts *GlobalOptions) *cobra.Command {
 	return &cobra.Command{
-		Use:   "unblock <task-id>",
-		Short: "Remove a task's blocking record",
-		Args:  cobra.ExactArgs(1),
+		Use:   "unblock <task-id>...",
+		Short: "Remove the blocking record from one or more tasks",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path, _, err := resolveTask(opts, args[0])
-			if err != nil {
-				return err
-			}
-			if err := runMutation(cmd.ErrOrStderr(), path, func(d *model.Document) error {
-				return mutate.UnblockTask(d, args[0])
-			}); err != nil {
-				return err
-			}
-			return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-				Kind: "unblocked task", ID: args[0], Path: path,
-			})
+			return runTaskBatch(opts, cmd.OutOrStdout(), cmd.ErrOrStderr(), args, "unblocked task", "",
+				func(d *model.Document, id string) error {
+					return mutate.UnblockTask(d, id)
+				})
 		},
 	}
 }

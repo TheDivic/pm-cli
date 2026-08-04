@@ -167,3 +167,67 @@ func TestEditTaskSetAndClear(t *testing.T) {
 }
 
 func ptrString(s string) *string { return &s }
+
+func TestDeleteTasksStripsBlockerReferencesOnCascade(t *testing.T) {
+	doc := &model.Document{
+		SchemaVersion: 1,
+		Project:       model.Project{ID: "demo", TaskIDPrefix: "dm"},
+		Tasks: []model.Task{
+			{ID: "dm-001", Title: "Parent", Status: model.TaskTodo},
+			{ID: "dm-002", Title: "Child", Status: model.TaskTodo, Parent: "dm-001"},
+			{ID: "dm-003", Title: "Other", Status: model.TaskInProgress,
+				Blocked: &model.Blocked{Reason: "waiting", Tasks: []string{"dm-001", "dm-002"}, Since: "2026-07-31"}},
+		},
+	}
+
+	deleted, err := DeleteTasks(doc, []string{"dm-001"}, true)
+	if err != nil {
+		t.Fatalf("cascade delete: %v", err)
+	}
+	if len(deleted) != 2 || deleted[0] != "dm-001" || deleted[1] != "dm-002" {
+		t.Fatalf("deleted = %v, want [dm-001 dm-002]", deleted)
+	}
+	if len(doc.Tasks) != 1 || doc.Tasks[0].ID != "dm-003" {
+		t.Fatalf("remaining tasks = %+v", doc.Tasks)
+	}
+	// The blocking record survives with an empty task list, not a dangling one.
+	b := doc.Tasks[0].Blocked
+	if b == nil || b.Reason != "waiting" {
+		t.Fatalf("blocking record lost: %+v", b)
+	}
+	if len(b.Tasks) != 0 {
+		t.Fatalf("blocker references not stripped: %v", b.Tasks)
+	}
+}
+
+func TestDeleteTasksRefusesDanglingReference(t *testing.T) {
+	doc := &model.Document{
+		SchemaVersion: 1,
+		Project:       model.Project{ID: "demo", TaskIDPrefix: "dm"},
+		Tasks: []model.Task{
+			{ID: "dm-001", Title: "Parent", Status: model.TaskTodo},
+			{ID: "dm-002", Title: "Child", Status: model.TaskTodo, Parent: "dm-001"},
+		},
+	}
+
+	if _, err := DeleteTasks(doc, []string{"dm-001"}, false); err == nil {
+		t.Fatal("expected a refusal for a referenced task")
+	}
+	if len(doc.Tasks) != 2 {
+		t.Fatalf("refused delete mutated the document: %+v", doc.Tasks)
+	}
+}
+
+func TestDeleteTasksUnknownID(t *testing.T) {
+	doc := &model.Document{
+		SchemaVersion: 1,
+		Project:       model.Project{ID: "demo", TaskIDPrefix: "dm"},
+		Tasks:         []model.Task{{ID: "dm-001", Title: "Only", Status: model.TaskTodo}},
+	}
+	if _, err := DeleteTasks(doc, []string{"dm-404"}, false); err == nil {
+		t.Fatal("expected an error for an unknown task ID")
+	}
+	if len(doc.Tasks) != 1 {
+		t.Fatalf("document changed: %+v", doc.Tasks)
+	}
+}

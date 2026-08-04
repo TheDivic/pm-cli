@@ -67,15 +67,28 @@ func newProjectsCreateCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 }
 
 func createProject(cmd *cobra.Command, opts *GlobalOptions, target string, doc *model.Document) error {
+	if _, err := writeNewProject(cmd, opts, target, doc); err != nil {
+		return err
+	}
+	return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
+		Kind: "created project", ID: doc.Project.ID, Status: string(doc.Project.Status), Path: target,
+	})
+}
+
+// writeNewProject validates a new project against the discovery root and writes
+// its task file, returning the absolute path. It reports nothing, so callers
+// that create a project as a side effect (capturing into the inbox) can decide
+// how to surface it.
+func writeNewProject(cmd *cobra.Command, opts *GlobalOptions, target string, doc *model.Document) (string, error) {
 	stem := strings.TrimSuffix(filepath.Base(target), ".tasks.yaml")
 	if stem != doc.Project.ID {
-		return pmerr.Usage("task filename stem %q must match project id %q", stem, doc.Project.ID)
+		return "", pmerr.Usage("task filename stem %q must match project id %q", stem, doc.Project.ID)
 	}
 
 	// Enforce project-ID and prefix uniqueness across the discovery root.
 	ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 	if err != nil {
-		return pmerr.IO("cannot discover projects: %v", err)
+		return "", pmerr.IO("cannot discover projects: %v", err)
 	}
 	for i := range ws.Projects {
 		p := ws.Projects[i]
@@ -83,39 +96,37 @@ func createProject(cmd *cobra.Command, opts *GlobalOptions, target string, doc *
 			continue
 		}
 		if p.Doc.Project.ID == doc.Project.ID {
-			return pmerr.Validation("project id %q already exists at %s", doc.Project.ID, p.Path).WithProject(doc.Project.ID)
+			return "", pmerr.Validation("project id %q already exists at %s", doc.Project.ID, p.Path).WithProject(doc.Project.ID)
 		}
 		if p.Doc.Project.TaskIDPrefix == doc.Project.TaskIDPrefix {
-			return pmerr.Validation("task-id-prefix %q already used by %s", doc.Project.TaskIDPrefix, p.Path).WithProject(doc.Project.ID)
+			return "", pmerr.Validation("task-id-prefix %q already used by %s", doc.Project.TaskIDPrefix, p.Path).WithProject(doc.Project.ID)
 		}
 	}
 
 	if f := validate.Document(doc); len(f) > 0 {
-		return reportFindings(cmd.ErrOrStderr(), target, f)
+		return "", reportFindings(cmd.ErrOrStderr(), target, f)
 	}
 
 	abs, err := filepath.Abs(target)
 	if err != nil {
-		return pmerr.IO("bad path %s: %v", target, err)
+		return "", pmerr.IO("bad path %s: %v", target, err)
 	}
 	release, err := lockfile.Acquire(abs)
 	if err != nil {
-		return pmerr.IO("cannot lock %s: %v", abs, err)
+		return "", pmerr.IO("cannot lock %s: %v", abs, err)
 	}
 	defer func() { _ = release() }()
 
 	if _, err := os.Stat(abs); err == nil {
-		return pmerr.Validation("refusing to replace existing file %s", target).WithFile(target)
+		return "", pmerr.Validation("refusing to replace existing file %s", target).WithFile(target)
 	}
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-		return pmerr.IO("cannot create directory: %v", err)
+		return "", pmerr.IO("cannot create directory: %v", err)
 	}
 	if err := fsatomic.WriteFile(abs, emit.Document(doc), 0o644); err != nil {
-		return pmerr.IO("cannot write %s: %v", target, err)
+		return "", pmerr.IO("cannot write %s: %v", target, err)
 	}
-	return reportMutation(cmd.OutOrStdout(), opts.JSON, mutationResult{
-		Kind: "created project", ID: doc.Project.ID, Status: string(doc.Project.Status), Path: target,
-	})
+	return abs, nil
 }
 
 // ---- projects edit ----
