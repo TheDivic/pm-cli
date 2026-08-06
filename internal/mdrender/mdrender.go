@@ -13,14 +13,26 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/muesli/termenv"
 )
 
-// style is the glamour style used for both color and plain output. Plain
-// output renders the same style and then strips the ANSI codes, rather than
-// using glamour's own "notty"/"ascii" styles, which leave emphasis and code
-// span markup unconsumed (`**bold**` prints literally) because they define no
-// transformation for those elements.
-const style = "dark"
+// styleFor picks the glamour style to render through. For colored output it
+// matches the terminal's actual background so a light theme doesn't get
+// styling tuned for a dark one (pale text on a light background is
+// unreadable) — deliberately via termenv.HasDarkBackground() rather than
+// glamour.WithAutoStyle(), which hardcodes its own is-this-a-terminal check
+// against os.Stdout and would silently fall back to the unstyled "notty"
+// style (leaving `**bold**` markup unconsumed) whenever that disagrees with
+// the caller's own color decision. For plain output the choice is arbitrary:
+// dark and light ship identical structural prefixes (headings, task boxes,
+// bullets, block quotes) and differ only in the color codes this path throws
+// away.
+func styleFor(color bool) string {
+	if color && !termenv.HasDarkBackground() {
+		return "light"
+	}
+	return "dark"
+}
 
 // Render converts Markdown to terminal text at the given width. When color is
 // false the escape codes produced by styling are stripped rather than never
@@ -30,7 +42,7 @@ func Render(md string, color bool, width int) string {
 	if width <= 0 {
 		width = 80
 	}
-	r, err := glamour.NewTermRenderer(glamour.WithStandardStyle(style), glamour.WithWordWrap(width))
+	r, err := glamour.NewTermRenderer(glamour.WithStandardStyle(styleFor(color)), glamour.WithWordWrap(width))
 	if err != nil {
 		return strings.TrimSpace(md) // styling is unavailable; the source is still readable
 	}
