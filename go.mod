@@ -1,4 +1,4 @@
-module github.com/TheDivic/plaintext-projects
+module github.com/TheDivic/pm-cli
 
 go 1.26.0
 

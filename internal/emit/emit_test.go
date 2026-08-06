@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/TheDivic/plaintext-projects/internal/decode"
-	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/pm-cli/internal/decode"
+	"github.com/TheDivic/pm-cli/internal/model"
 )
 
 func ptr(n int) *int { return &n }

@@ -6,14 +6,14 @@ import (
 	"io"
 	"os"
 
-	"github.com/TheDivic/plaintext-projects/internal/decode"
-	"github.com/TheDivic/plaintext-projects/internal/discover"
-	"github.com/TheDivic/plaintext-projects/internal/emit"
-	"github.com/TheDivic/plaintext-projects/internal/fsatomic"
-	"github.com/TheDivic/plaintext-projects/internal/lockfile"
-	"github.com/TheDivic/plaintext-projects/internal/model"
-	"github.com/TheDivic/plaintext-projects/internal/pmerr"
-	"github.com/TheDivic/plaintext-projects/internal/validate"
+	"github.com/TheDivic/pm-cli/internal/decode"
+	"github.com/TheDivic/pm-cli/internal/discover"
+	"github.com/TheDivic/pm-cli/internal/emit"
+	"github.com/TheDivic/pm-cli/internal/fsatomic"
+	"github.com/TheDivic/pm-cli/internal/lockfile"
+	"github.com/TheDivic/pm-cli/internal/model"
+	"github.com/TheDivic/pm-cli/internal/pmerr"
+	"github.com/TheDivic/pm-cli/internal/validate"
 )
 
 // runMutation performs the full mutation-safety sequence on path: lock, read,

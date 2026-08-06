@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TheDivic/plaintext-projects/internal/clock"
-	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/pm-cli/internal/clock"
+	"github.com/TheDivic/pm-cli/internal/model"
 )
 
 func fixed() clock.Clock {

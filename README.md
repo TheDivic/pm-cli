@@ -1,4 +1,4 @@
-# Plaintext Projects (`pm`)
+# PM CLI (`pm`)
 
 ![pm in a terminal: listing projects with progress bars, listing ranked tasks, capturing a task into the inbox, moving two tasks to in-progress at once, showing a project with its rendered Markdown document, and emitting JSON for agents](docs/demo.gif)
 
@@ -58,20 +58,20 @@ The demo above is recorded from [`docs/demo.tape`](docs/demo.tape) with
 `pm` is a single self-contained binary with no runtime dependencies.
 
 **Prebuilt binary** — download the archive for your OS/arch from the
-[releases page](https://github.com/TheDivic/plaintext-projects/releases), extract
+[releases page](https://github.com/TheDivic/pm-cli/releases), extract
 it, and put `pm` on your `PATH`.
 
 **With Go** (1.26+):
 
 ```sh
-go install github.com/TheDivic/plaintext-projects/cmd/pm@latest
+go install github.com/TheDivic/pm-cli/cmd/pm@latest
 ```
 
 **From source:**
 
 ```sh
-git clone https://github.com/TheDivic/plaintext-projects
-cd plaintext-projects
+git clone https://github.com/TheDivic/pm-cli
+cd pm-cli
 make build            # produces ./bin/pm with version metadata baked in
 ```
 

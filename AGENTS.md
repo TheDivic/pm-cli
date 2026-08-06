@@ -5,7 +5,7 @@ in [`CONTRIBUTING.md`](CONTRIBUTING.md); this is the operational summary.
 
 ## Purpose
 
-Implement `pm`, the Plaintext Projects CLI, against the frozen format and CLI
+Implement `pm`, the PM CLI, against the frozen format and CLI
 specifications in [`docs/spec/`](docs/spec/). Do not change the documented
 format or CLI behavior; only the implementation path is ours to decide. See [`implementation-plan.md`](implementation-plan.md).
 

@@ -25,22 +25,22 @@ the host home; the host home is mounted at its real absolute path (for example
 `/Users/<name>/…`). `ls ~` will report the knowledge base as missing when it is
 in fact mounted. Locate it by its absolute path.
 
-The project directory is `$PM_BRAIN/projects/plaintext-projects/`:
+The project directory is `$PM_BRAIN/projects/pm-cli/`:
 
 | file | holds | how to change it |
 |------|-------|------------------|
-| `plaintext-projects.tasks.yaml` | task state and progress | **`pm` only** — never hand-edit |
-| `plaintext-projects.md` | decisions (Decisions section), open questions, resources | edit directly |
-| `plaintext-projects.notes.md` | live, provisional, or unresolved observations — *not* task state | edit directly |
+| `pm-cli.tasks.yaml` | task state and progress | **`pm` only** — never hand-edit |
+| `pm-cli.md` | decisions (Decisions section), open questions, resources | edit directly |
+| `pm-cli.notes.md` | live, provisional, or unresolved observations — *not* task state | edit directly |
 
 ## Progress: use `pm`, not an editor
 
-The task file is a `*.tasks.yaml` file, so the `plaintext-projects` skill's one rule
+The task file is a `*.tasks.yaml` file, so the `pm-cli` skill's one rule
 applies — hand-editing bypasses validation, breaks canonical formatting, and
 corrupts ID allocation. Dogfood the tool:
 
 ```sh
-pm tasks add -p plaintext-projects -t "<what the work is>"
+pm tasks add -p pm-cli -t "<what the work is>"
 pm tasks status pt-0NN in-progress          # when starting
 pm tasks status pt-0NN done                 # when finished
 pm tasks status pt-0NN cancelled -r "<why>" # when superseded — reason required
@@ -52,7 +52,7 @@ actually shipped. That keeps the reversal legible instead of rewriting history.
 
 ## Decisions and spec changes
 
-- A real decision goes in the Decisions section of `plaintext-projects.md`, as one
+- A real decision goes in the Decisions section of `pm-cli.md`, as one
   sentence stating what was decided and why.
 - **The normative specs are `docs/spec/` in this repository**, not in the
   knowledge base. If a change alters documented CLI behavior, amend
@@ -60,7 +60,7 @@ actually shipped. That keeps the reversal legible instead of rewriting history.
   diverge is worse than editing a frozen file. The user asking for the behavior
   change is the authorization, but say plainly in your report that you touched a
   frozen spec. If the knowledge base carries a mirror copy, update it too.
-- Provisional or unresolved things go in `plaintext-projects.notes.md`, not into task
+- Provisional or unresolved things go in `pm-cli.notes.md`, not into task
   state and not into Decisions.
 
 ## Committing — a different style from this repo
@@ -94,7 +94,7 @@ not yours — other projects' task files and the maintainer's own notes. Leave t
 unstaged and never bundle them into a commit.
 
 When your change and the user's share a file you cannot split (both editing
-`plaintext-projects.tasks.yaml`, say), it is fine to carry theirs along — but note it
+`pm-cli.tasks.yaml`, say), it is fine to carry theirs along — but note it
 in the commit body and in your report to the user, rather than doing it silently.
 
 Never force-push. Report the commit hash and push result when done.

@@ -7,7 +7,7 @@ import (
 )
 
 // Build metadata, overridden at build time with
-// -ldflags "-X github.com/TheDivic/plaintext-projects/internal/cli.version=... ".
+// -ldflags "-X github.com/TheDivic/pm-cli/internal/cli.version=... ".
 // Binaries produced by `go install` carry no ldflags, so the values fall back to
 // the module version and VCS stamps the Go toolchain embeds automatically.
 var (
