@@ -30,6 +30,12 @@ format or CLI behavior; only the implementation path is ours to decide. See [`im
   `bin/pm` with something it cannot exec ("exec format error"). Use
   `go build -o /tmp/pm ./cmd/pm` or `go run ./cmd/pm ...` for smoke tests, and
   leave `bin/` for the host's own `make build`.
+- **This project's task state and decision record live outside this repo**, in
+  the maintainer's private knowledge base (`~/plaintext-brain`,
+  `projects/pm-cli/`). Work is not finished until it is reflected there — see
+  the `kb-sync` skill ([`.claude/skills/kb-sync/SKILL.md`](.claude/skills/kb-sync/SKILL.md))
+  for how to locate the checkout and the sync workflow. Skip it if that
+  checkout is not present on the current machine.
 
 ## Layout
 
