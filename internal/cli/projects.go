@@ -419,13 +419,14 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
 	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
 	// PROGRESS is last so its multibyte bar cannot skew tabwriter's alignment
-	// of the preceding columns.
-	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tPRIO\tCREATED\tPROGRESS")
+	// of the preceding columns. Priority is not shown here: it already drives
+	// the sort order, and `projects show` reports it.
+	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tCREATED\tPROGRESS")
 	for _, p := range ordered {
 		c := taskCounts(p.Doc)
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
 			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
-			priorityLabel(p.Doc.Project.Priority), dateLabel(p.Doc.Project.Created),
+			dateLabel(p.Doc.Project.Created),
 			miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
 	}
 	if err := tw.Flush(); err != nil {
