@@ -16,7 +16,9 @@ type GlobalOptions struct {
 	JSON bool
 	// NoIgnore disables .gitignore filtering during discovery.
 	NoIgnore bool
-	// Color is the --color mode: auto, always, or never.
+	// Color is the --color mode as given on the command line: auto, always,
+	// or never. Empty means the flag was not given — resolveColor falls back
+	// to $PM_COLOR, then "auto".
 	Color string
 }
 
@@ -42,7 +44,7 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	pf.StringVar(&opts.Root, "root", "", "discovery root (default: $PM_ROOT or current directory)")
 	pf.BoolVar(&opts.JSON, "json", false, "emit machine-readable JSON")
 	pf.BoolVar(&opts.NoIgnore, "no-ignore", false, "include .gitignored paths in discovery")
-	pf.StringVar(&opts.Color, "color", "auto", "colorize rendered output: auto, always, or never")
+	pf.StringVar(&opts.Color, "color", "", "colorize rendered output: auto, always, or never (default: auto, or $PM_COLOR)")
 
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newProjectsCmd(opts, clk))

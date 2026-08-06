@@ -54,7 +54,7 @@ need a project or a path — just the ID.
 | `--root <path>` | discovery root (default `$PM_ROOT`, then cwd) |
 | `--json` | machine-readable output; **use this whenever you will parse the result** |
 | `--no-ignore` | include paths `.gitignore` would exclude |
-| `--color <auto\|always\|never>` | override terminal-color detection; `always` keeps `projects doc` output styled through a pipe into a pager (`pm projects doc <id> --color always \| less -R`) |
+| `--color <auto\|always\|never>` | override terminal-color detection; `always` keeps `projects doc` output styled through a pipe into a pager (`pm projects doc <id> --color always \| less -R`); default `auto`, or `$PM_COLOR` |
 
 ## Reading
 

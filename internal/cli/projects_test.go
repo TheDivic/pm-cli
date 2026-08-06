@@ -506,6 +506,51 @@ func TestProjectsDocInvalidColorIsAUsageError(t *testing.T) {
 	}
 }
 
+func TestProjectsDocColorEnvVarSetsTheDefault(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	t.Setenv("PM_COLOR", "always")
+	code, stdout, stderr := run("--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("$PM_COLOR=always should style output without --color:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocColorFlagOverridesEnvVar(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	t.Setenv("PM_COLOR", "always")
+	code, stdout, stderr := run("--color", "never", "--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("--color=never should override $PM_COLOR=always:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocInvalidColorEnvVarIsAUsageError(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	t.Setenv("PM_COLOR", "bogus")
+	code, _, stderr := run("--root", root, "projects", "doc", "demo")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2 (usage): %s", code, stderr)
+	}
+	if !strings.Contains(stderr, "bogus") {
+		t.Fatalf("error should name the bad value: %s", stderr)
+	}
+}
+
 func TestProjectsListHidesTerminalProjectsByDefault(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "live.tasks.yaml"), projFileArea("live", "in-progress", "", "alpha"))

@@ -31,6 +31,24 @@ func joinComma(v []string) string { return strings.Join(v, ", ") }
 // validColorModes are the values accepted by --color.
 var validColorModes = map[string]bool{"auto": true, "always": true, "never": true}
 
+// colorEnvVar names the environment variable that supplies a default --color
+// mode when the flag is not given, mirroring $PM_ROOT for --root.
+const colorEnvVar = "PM_COLOR"
+
+// resolveColor returns the effective --color mode: the flag takes precedence
+// when given, then $PM_COLOR, then "auto". opts.Color is empty when --color
+// was not passed, since the flag has no default of its own — that way a
+// user can set $PM_COLOR once instead of passing --color on every call.
+func resolveColor(opts *GlobalOptions) string {
+	if opts.Color != "" {
+		return opts.Color
+	}
+	if env := os.Getenv(colorEnvVar); env != "" {
+		return env
+	}
+	return "auto"
+}
+
 // validateColor rejects a --color value that isn't auto, always, or never,
 // before it reaches useColor.
 func validateColor(mode string) error {

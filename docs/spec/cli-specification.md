@@ -12,7 +12,7 @@ pm [--root <path>] [--json] [--no-ignore] [--color <auto|always|never>] <resourc
 
 `--root` selects the discovery root explicitly. Without it, `pm` uses the `PM_ROOT` environment variable when set, and otherwise the current working directory. The precedence is `--root`, then `PM_ROOT`, then the working directory. The executable does not depend on a repository-specific launcher, a particular knowledge base, or an agent runtime.
 
-`--color` overrides the automatic terminal detection that decides whether rendered output carries ANSI styling. `auto`, the default, is the existing behavior: styled only when writing to a terminal with `NO_COLOR` unset. `always` styles regardless of destination — the way to keep styling through a pipe into a pager that itself preserves escape codes (for example `pm projects doc <project-id> --color always | less -R`). `never` suppresses styling unconditionally, including on a terminal. An unrecognized value is a usage error.
+`--color` overrides the automatic terminal detection that decides whether rendered output carries ANSI styling. `auto`, the default, is the existing behavior: styled only when writing to a terminal with `NO_COLOR` unset. `always` styles regardless of destination — the way to keep styling through a pipe into a pager that itself preserves escape codes (for example `pm projects doc <project-id> --color always | less -R`). `never` suppresses styling unconditionally, including on a terminal. Without `--color`, the `PM_COLOR` environment variable supplies the mode instead, so a user can set it once rather than passing the flag on every call; the precedence is `--color`, then `PM_COLOR`, then `auto`. An unrecognized value from either source is a usage error.
 
 ## Discovery
 

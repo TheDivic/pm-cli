@@ -84,7 +84,8 @@ func newProjectsDocCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "Show a project's Markdown document",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateColor(opts.Color); err != nil {
+			color := resolveColor(opts)
+			if err := validateColor(color); err != nil {
 				return err
 			}
 			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
@@ -103,7 +104,7 @@ func newProjectsDocCmd(opts *GlobalOptions) *cobra.Command {
 				return writeProjectDocJSON(cmd.OutOrStdout(), args[0], rel, content)
 			}
 			w := cmd.OutOrStdout()
-			fmt.Fprintln(w, mdrender.Render(content, useColor(w, opts.Color), docWidth(w)))
+			fmt.Fprintln(w, mdrender.Render(content, useColor(w, color), docWidth(w)))
 			return nil
 		},
 	}
