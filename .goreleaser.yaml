@@ -25,9 +25,9 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/TheDivic/plaintext-projects/internal/cli.version={{ .Version }}
-      - -X github.com/TheDivic/plaintext-projects/internal/cli.commit={{ .ShortCommit }}
-      - -X github.com/TheDivic/plaintext-projects/internal/cli.date={{ .Date }}
+      - -X github.com/TheDivic/pm-cli/internal/cli.version={{ .Version }}
+      - -X github.com/TheDivic/pm-cli/internal/cli.commit={{ .ShortCommit }}
+      - -X github.com/TheDivic/pm-cli/internal/cli.date={{ .Date }}
 
 archives:
   - id: pm

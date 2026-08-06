@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/TheDivic/plaintext-projects/internal/discover"
-	"github.com/TheDivic/plaintext-projects/internal/model"
-	"github.com/TheDivic/plaintext-projects/internal/pmerr"
+	"github.com/TheDivic/pm-cli/internal/discover"
+	"github.com/TheDivic/pm-cli/internal/model"
+	"github.com/TheDivic/pm-cli/internal/pmerr"
 )
 
 // taskTarget is one resolved task ID and the absolute path of the file holding

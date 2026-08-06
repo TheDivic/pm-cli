@@ -11,7 +11,7 @@ func TestRenderPlain(t *testing.T) {
 	tests := []struct {
 		name, in, want string
 	}{
-		{"h1 becomes a banner", "# Plaintext Projects", "PLAINTEXT PROJECTS"},
+		{"h1 becomes a banner", "# PM CLI", "PM CLI"},
 		{"h2 keeps its case", "## Decisions", "Decisions"},
 		{"h3 keeps its case", "### Format", "Format"},
 		{"bullet gets a glyph", "- one", "• one"},

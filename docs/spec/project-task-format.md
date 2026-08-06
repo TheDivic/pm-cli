@@ -1,6 +1,6 @@
 # Project task format
 
-This document defines schema version 1 of `*.tasks.yaml`. It is the normative reference for Plaintext Projects files, migrations, validation, and CLI behavior.
+This document defines schema version 1 of `*.tasks.yaml`. It is the normative reference for PM CLI files, migrations, validation, and CLI behavior.
 
 ## File role and name
 

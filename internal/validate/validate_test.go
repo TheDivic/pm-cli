@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/pm-cli/internal/model"
 )
 
 func validDoc() *model.Document {

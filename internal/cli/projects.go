@@ -12,12 +12,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TheDivic/plaintext-projects/internal/clock"
-	"github.com/TheDivic/plaintext-projects/internal/discover"
-	"github.com/TheDivic/plaintext-projects/internal/mdrender"
-	"github.com/TheDivic/plaintext-projects/internal/model"
-	"github.com/TheDivic/plaintext-projects/internal/pmerr"
-	"github.com/TheDivic/plaintext-projects/internal/validate"
+	"github.com/TheDivic/pm-cli/internal/clock"
+	"github.com/TheDivic/pm-cli/internal/discover"
+	"github.com/TheDivic/pm-cli/internal/mdrender"
+	"github.com/TheDivic/pm-cli/internal/model"
+	"github.com/TheDivic/pm-cli/internal/pmerr"
+	"github.com/TheDivic/pm-cli/internal/validate"
 )
 
 // rootEnvVar names the environment variable that supplies a default discovery

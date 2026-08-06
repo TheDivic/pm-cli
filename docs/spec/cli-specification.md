@@ -1,6 +1,6 @@
-# Plaintext Projects CLI specification
+# PM CLI specification
 
-The Plaintext Projects CLI reads, validates, queries, formats, and updates `*.tasks.yaml` files. People use concise terminal output; LLM agents and repository automation can request JSON.
+PM CLI reads, validates, queries, formats, and updates `*.tasks.yaml` files. People use concise terminal output; LLM agents and repository automation can request JSON.
 
 ## Entry point
 

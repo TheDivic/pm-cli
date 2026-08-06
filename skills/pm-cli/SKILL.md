@@ -1,9 +1,9 @@
 ---
-name: plaintext-projects
+name: pm-cli
 description: Manage projects and tasks stored as plaintext *.tasks.yaml files using the `pm` CLI. Use whenever the user asks to list, filter, inspect, add, edit, complete, cancel, block, or reprioritize tasks or projects, asks what to work on next or how a project is progressing, or when the working tree contains *.tasks.yaml files. Covers the full command surface, JSON output for automation, and lifecycle rules — never hand-edit a *.tasks.yaml file.
 ---
 
-# Plaintext Projects (`pm`)
+# PM CLI (`pm`)
 
 `pm` manages projects and tasks stored as human-readable `*.tasks.yaml` files. No
 database, no server: the files are the source of truth and Git is the history.

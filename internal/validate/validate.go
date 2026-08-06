@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/TheDivic/plaintext-projects/internal/model"
+	"github.com/TheDivic/pm-cli/internal/model"
 )
 
 // Finding is one validation problem with a dotted field path and, when the

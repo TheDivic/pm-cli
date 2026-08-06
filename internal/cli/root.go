@@ -3,7 +3,7 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TheDivic/plaintext-projects/internal/clock"
+	"github.com/TheDivic/pm-cli/internal/clock"
 )
 
 // GlobalOptions holds the flags shared by every command. They are bound on the
@@ -24,7 +24,7 @@ type GlobalOptions struct {
 func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "pm",
-		Short: "Plaintext Projects: manage projects and tasks stored as *.tasks.yaml files",
+		Short: "PM CLI: manage projects and tasks stored as *.tasks.yaml files",
 		Long: "pm reads, validates, queries, formats, and safely mutates *.tasks.yaml\n" +
 			"project files. People get concise output; agents can request --json.",
 		// We render errors and usage ourselves so the exit-code and JSON-error

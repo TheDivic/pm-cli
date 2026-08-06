@@ -1,4 +1,4 @@
-# Plaintext Projects — implementation plan
+# PM CLI — implementation plan
 
 Implementation path for the `pm` CLI. The format and CLI **contract** are frozen by the
 accepted specs in [`docs/spec/`](docs/spec/) and are not restated or changed here:
@@ -11,7 +11,7 @@ strategy, and our own task breakdown.
 
 ## Toolchain and dependencies
 
-- Language: Go 1.26, module `github.com/TheDivic/plaintext-projects`, binary `pm`.
+- Language: Go 1.26, module `github.com/TheDivic/pm-cli`, binary `pm`.
 - `github.com/spf13/cobra` — subcommand dispatch and help. Configured with `SilenceErrors` and
   `SilenceUsage`; `main` maps our structured errors to exit codes 0/1/2/3 and picks human vs JSON
   rendering. Cobra never prints our diagnostics.
@@ -43,7 +43,7 @@ reads the machine date directly.
 ## Package layout
 
 ```
-plaintext-projects/
+pm-cli/
   go.mod
   cmd/pm/main.go            thin: build cobra tree, dispatch, map errors -> exit codes
   internal/
