@@ -12,7 +12,7 @@ LDFLAGS := -s -w \
 	-X $(MODULE).commit=$(COMMIT) \
 	-X $(MODULE).date=$(DATE)
 
-.PHONY: all check fmt fmt-check vet lint test test-race build demo tidy clean
+.PHONY: all check fmt fmt-check vet lint test test-race build install demo tidy clean
 
 # Default: run the full gate, then build.
 all: check build
@@ -44,6 +44,12 @@ test-race:
 
 build:
 	$(GO) build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/pm
+
+# Install pm from local source to $(go env GOPATH)/bin. Carries no ldflags,
+# same as `go install .../cmd/pm@latest`; buildMetadata falls back to Go's own
+# module and VCS build info in that case (see internal/cli/version.go).
+install:
+	$(GO) install ./cmd/pm
 
 # Re-record the README demo. Needs charmbracelet/vhs on PATH; writes
 # docs/demo.gif, which is committed so GitHub can serve it.
