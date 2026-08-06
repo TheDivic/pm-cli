@@ -248,7 +248,7 @@ project:
   id: dropped
   title: Dropped
   task-id-prefix: dr
-  status: idea
+  status: backlog
   created: "2026-07-31"
 
 tasks:

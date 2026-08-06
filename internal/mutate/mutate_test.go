@@ -77,7 +77,7 @@ func TestAddTaskInsertsAfterParentSubtree(t *testing.T) {
 
 func TestProjectStatusManagesDates(t *testing.T) {
 	d := baseDoc()
-	d.Project.Status = model.ProjectIdea
+	d.Project.Status = model.ProjectBacklog
 	d.Project.Started = ""
 
 	if err := ProjectStatus(d, model.ProjectInProgress, "", fixed()); err != nil {

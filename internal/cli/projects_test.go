@@ -133,10 +133,10 @@ func listIDs(t *testing.T, root string, extra ...string) []string {
 func TestProjectsListSortOrder(t *testing.T) {
 	root := t.TempDir()
 	// Same status; same priority with different created; a lower priority; none.
-	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFile("a", "idea", "1", "2026-02-01"))
-	writeFile(t, filepath.Join(root, "c.tasks.yaml"), listProjectFile("c", "idea", "1", "2026-01-01"))
-	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFile("b", "idea", "2", "2026-01-01"))
-	writeFile(t, filepath.Join(root, "z.tasks.yaml"), listProjectFile("z", "idea", "", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFile("a", "backlog", "1", "2026-02-01"))
+	writeFile(t, filepath.Join(root, "c.tasks.yaml"), listProjectFile("c", "backlog", "1", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFile("b", "backlog", "2", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "z.tasks.yaml"), listProjectFile("z", "backlog", "", "2026-01-01"))
 
 	got := listIDs(t, root)
 	// c (p1, Jan) < a (p1, Feb) < b (p2) < z (no priority).
@@ -148,14 +148,14 @@ func TestProjectsListSortOrder(t *testing.T) {
 
 func TestProjectsListInProgressFirst(t *testing.T) {
 	root := t.TempDir()
-	// An in-progress project with no priority must precede a prioritized idea.
+	// An in-progress project with no priority must precede a prioritized backlog project.
 	writeFile(t, filepath.Join(root, "prog.tasks.yaml"), listProjectFile("prog", "in-progress", "", "2026-03-01"))
-	writeFile(t, filepath.Join(root, "idea.tasks.yaml"), listProjectFile("idea", "idea", "1", "2026-01-01"))
+	writeFile(t, filepath.Join(root, "backlog.tasks.yaml"), listProjectFile("backlog", "backlog", "1", "2026-01-01"))
 	// A second in-progress with a priority sorts ahead of the unprioritized one.
 	writeFile(t, filepath.Join(root, "prog2.tasks.yaml"), listProjectFile("prog2", "in-progress", "1", "2026-05-01"))
 
 	got := listIDs(t, root)
-	want := []string{"prog2", "prog", "idea"}
+	want := []string{"prog2", "prog", "backlog"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("order = %v, want %v", got, want)
 	}
@@ -171,14 +171,17 @@ func projFileArea(id, status, prio, area string) string {
 	if status == "in-progress" {
 		s += "  started: \"2026-07-31\"\n"
 	}
+	if status == "cancelled" {
+		s += "  cancellation:\n    reason: test fixture\n    date: \"2026-07-31\"\n"
+	}
 	return s + "\ntasks: []\n"
 }
 
 func TestProjectsListFilters(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "a.tasks.yaml"), projFileArea("a", "idea", "1", "alpha"))
-	writeFile(t, filepath.Join(root, "b.tasks.yaml"), projFileArea("b", "done", "", "beta"))
-	writeFile(t, filepath.Join(root, "c.tasks.yaml"), projFileArea("c", "idea", "2", "alpha"))
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), projFileArea("a", "backlog", "1", "alpha"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), projFileArea("b", "cancelled", "", "beta"))
+	writeFile(t, filepath.Join(root, "c.tasks.yaml"), projFileArea("c", "backlog", "2", "alpha"))
 
 	eq := func(got, want []string) {
 		t.Helper()
@@ -186,15 +189,16 @@ func TestProjectsListFilters(t *testing.T) {
 			t.Fatalf("got %v, want %v", got, want)
 		}
 	}
-	// idea status: a (prio 1) then c (prio 2).
-	eq(listIDs(t, root, "--status", "idea"), []string{"a", "c"})
+	// backlog status: a (prio 1) then c (prio 2).
+	eq(listIDs(t, root, "--status", "backlog"), []string{"a", "c"})
 	// priority 1 only.
 	eq(listIDs(t, root, "--priority", "1"), []string{"a"})
-	// area beta only. b is done, so it needs --all to show up.
+	// area beta only. b is cancelled, the one status hidden by default, so it
+	// needs --all to show up.
 	eq(listIDs(t, root, "--all", "--area", "beta"), []string{"b"})
 	eq(listIDs(t, root, "--area", "beta"), nil)
-	// AND across filters: idea AND priority 2 -> c.
-	eq(listIDs(t, root, "--status", "idea", "--priority", "2"), []string{"c"})
+	// AND across filters: backlog AND priority 2 -> c.
+	eq(listIDs(t, root, "--status", "backlog", "--priority", "2"), []string{"c"})
 	// OR within a filter: priority 1 or 2 -> a, c.
 	eq(listIDs(t, root, "--priority", "1", "--priority", "2"), []string{"a", "c"})
 }
@@ -288,28 +292,34 @@ func TestProjectsListSectionsOrderByLifecycleStage(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
 	writeFile(t, filepath.Join(root, "review", "review.tasks.yaml"), projectInReview)
-	writeFile(t, filepath.Join(root, "todo.tasks.yaml"), listProjectFile("todoproj", "todo", "", "2026-07-31"))
+	writeFile(t, filepath.Join(root, "backlog.tasks.yaml"), listProjectFile("backlogproj", "backlog", "", "2026-07-31"))
+	writeFile(t, filepath.Join(root, "ready.tasks.yaml"), listProjectFile("readyproj", "ready", "", "2026-07-31"))
 	writeFile(t, filepath.Join(root, "blocked.tasks.yaml"), listProjectFile("blockedproj", "blocked", "", "2026-07-31"))
+	writeFile(t, filepath.Join(root, "done.tasks.yaml"), listProjectFile("doneproj", "done", "", "2026-07-31"))
 
 	_, stdout, _ := run("--root", root, "projects", "list")
-	// Sections read top to bottom as the pipeline: todo, in-progress, blocked,
-	// in-review — not "closest to done first". blocked sits right after
-	// in-progress, where a project actually stalls, rather than after
-	// in-review.
+	// Sections read top to bottom as the pipeline: backlog, ready, in-progress,
+	// blocked, in-review, done — not "closest to done first". blocked sits
+	// right after in-progress, where a project actually stalls, rather than
+	// after in-review. done is visible by default and sorts last.
 	positions := map[string]int{
-		"TODO":        strings.Index(stdout, "TODO ·"),
+		"BACKLOG":     strings.Index(stdout, "BACKLOG ·"),
+		"READY":       strings.Index(stdout, "READY ·"),
 		"IN-PROGRESS": strings.Index(stdout, "IN-PROGRESS ·"),
 		"BLOCKED":     strings.Index(stdout, "BLOCKED ·"),
 		"IN-REVIEW":   strings.Index(stdout, "IN-REVIEW ·"),
+		"DONE":        strings.Index(stdout, "DONE ·"),
 	}
 	for label, pos := range positions {
 		if pos < 0 {
 			t.Fatalf("missing %s section: %q", label, stdout)
 		}
 	}
-	inOrder := positions["TODO"] < positions["IN-PROGRESS"] &&
+	inOrder := positions["BACKLOG"] < positions["READY"] &&
+		positions["READY"] < positions["IN-PROGRESS"] &&
 		positions["IN-PROGRESS"] < positions["BLOCKED"] &&
-		positions["BLOCKED"] < positions["IN-REVIEW"]
+		positions["BLOCKED"] < positions["IN-REVIEW"] &&
+		positions["IN-REVIEW"] < positions["DONE"]
 	if !inOrder {
 		t.Fatalf("sections out of order: %v\n%s", positions, stdout)
 	}
@@ -387,7 +397,7 @@ func TestProjectsListColumnsAlignAcrossSections(t *testing.T) {
 	root := t.TempDir()
 	// A task each, so miniProgress renders a bar instead of "-" for nothing
 	// countable — the alignment claim is about where the bar starts.
-	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFileWithTask("a-very-long-project-id", "todo"))
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFileWithTask("a-very-long-project-id", "ready"))
 	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFileWithTask("b", "in-progress"))
 
 	_, stdout, _ := run("--root", root, "projects", "list")
@@ -410,7 +420,7 @@ func TestProjectsListEmptyResultReportsNothingMatched(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
 
-	code, stdout, stderr := run("--root", root, "projects", "list", "--status", "idea")
+	code, stdout, stderr := run("--root", root, "projects", "list", "--status", "backlog")
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
@@ -680,20 +690,21 @@ func TestProjectsDocInvalidColorEnvVarIsAUsageError(t *testing.T) {
 	}
 }
 
-func TestProjectsListHidesTerminalProjectsByDefault(t *testing.T) {
+func TestProjectsListHidesOnlyCancelledByDefault(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "live.tasks.yaml"), projFileArea("live", "in-progress", "", "alpha"))
 	writeFile(t, filepath.Join(root, "shipped.tasks.yaml"), projFileArea("shipped", "done", "", "alpha"))
 	writeFile(t, filepath.Join(root, "dropped.tasks.yaml"), projFileArea("dropped", "cancelled", "", "alpha"))
-	writeFile(t, filepath.Join(root, "idea.tasks.yaml"), projFileArea("idea", "idea", "", "alpha"))
+	writeFile(t, filepath.Join(root, "backlog.tasks.yaml"), projFileArea("backlog", "backlog", "", "alpha"))
 
-	// Finished work accumulates without bound, so it is hidden by default.
+	// Done stays visible by default (completed work is still worth pointing
+	// at); cancelled accumulates without bound and is the one status hidden.
 	got := listIDs(t, root)
-	if strings.Join(got, ",") != "live,idea" {
-		t.Fatalf("default listing = %v, want [live idea]", got)
+	if strings.Join(got, ",") != "live,backlog,shipped" {
+		t.Fatalf("default listing = %v, want [live backlog shipped]", got)
 	}
 
-	// -a/--all brings it back.
+	// -a/--all brings cancelled back too.
 	all := listIDs(t, root, "--all")
 	if len(all) != 4 {
 		t.Fatalf("--all listing = %v, want 4 projects", all)

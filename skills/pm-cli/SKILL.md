@@ -77,16 +77,16 @@ pm tags
   backlog, done, cancelled), then priority (1 is highest, unset last), then file
   order. To answer "what should I work on next?", run `pm tasks list` and take
   the top row. Do not re-sort.
-- `projects list` **hides `done` and `cancelled` projects by default** (`-a`
-  includes them; an explicit `-s` overrides). `--json` lists projects flat,
-  in-review first, then in-progress, then the rest — and within each group by
-  priority, creation date, ID, including the `inbox` project like any other.
-  Human-readable output instead groups projects into status sections read as
-  the lifecycle pipeline (`idea`, `todo`, `in-progress`, `blocked`,
-  `in-review`, then `done`/`cancelled` with `-a`), behind an `ID`/`TITLE`/
-  `CREATED`/`PROGRESS` header row — and **excludes the `inbox` project
-  entirely**, since it's a project, not a status; use
-  `pm tasks list -p inbox` for it.
+- `projects list` **hides only `cancelled` projects by default** (`done`
+  projects stay visible; `-a` includes `cancelled` too; an explicit `-s`
+  overrides). `--json` lists projects flat, in-review first, then
+  in-progress, then the rest — and within each group by priority, creation
+  date, ID, including the `inbox` project like any other. Human-readable
+  output instead groups projects into status sections read as the lifecycle
+  pipeline (`backlog`, `ready`, `in-progress`, `blocked`, `in-review`,
+  `done`, then `cancelled` with `-a`), behind an `ID`/`TITLE`/`CREATED`/
+  `PROGRESS` header row — and **excludes the `inbox` project entirely**,
+  since it's a project, not a status; use `pm tasks list -p inbox` for it.
 - `projects show` reports a `Doc`/`doc_path` pointer when the project has a
   Markdown document, but not its content. Use `projects doc <project-id>` for
   that — rendered for a terminal by default, or the raw source under `doc` in
@@ -147,8 +147,9 @@ Shorthands: `-p` project, `-t` title, `-s` status, `-r` reason, `-g` tag, `-a` a
 ### Lifecycle
 
 Statuses — tasks: `backlog`, `todo`, `in-progress`, `in-review`, `done`,
-`cancelled`. Projects: `idea`, `todo`, `in-progress`, `in-review`, `blocked`,
-`done`, `cancelled` (projects have no `backlog`; tasks have no `blocked` status
+`cancelled`. Projects: `backlog`, `ready`, `in-progress`, `in-review`,
+`blocked`, `done`, `cancelled` (projects have `ready` where tasks have
+`todo`, and `blocked` as a status of its own; tasks have no `blocked` status
 — see below).
 
 `pm` owns every date; never pass or set one:

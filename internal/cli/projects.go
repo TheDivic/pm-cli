@@ -280,15 +280,17 @@ func rootOrCWD(opts *GlobalOptions) string {
 
 // ---- projects list ----
 
-// openProjectStatuses are the non-terminal project statuses shown by `projects
-// list` by default. Done and cancelled projects are history: they accumulate
-// without bound and would eventually bury the work in flight.
+// openProjectStatuses are the project statuses shown by `projects list` by
+// default. Cancelled is the one status excluded: it is work that will never
+// be finished, and, unlike done, has no value as a visible record — done
+// projects stay visible so completed work is still easy to point at.
 var openProjectStatuses = []string{
-	string(model.ProjectIdea),
-	string(model.ProjectTodo),
+	string(model.ProjectBacklog),
+	string(model.ProjectReady),
 	string(model.ProjectInProgress),
 	string(model.ProjectInReview),
 	string(model.ProjectBlocked),
+	string(model.ProjectDone),
 }
 
 func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
@@ -309,8 +311,8 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
-			// Mirrors tasks list: hide finished work unless asked, and let an
-			// explicit --status say exactly what to show.
+			// Hide cancelled work unless asked, and let an explicit --status
+			// say exactly what to show.
 			if !all && !cmd.Flags().Changed("status") {
 				f.Statuses = openProjectStatuses
 			}
@@ -324,7 +326,7 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 		},
 	}
 	flags := cmd.Flags()
-	flags.BoolVarP(&all, "all", "a", false, "include done and cancelled projects")
+	flags.BoolVarP(&all, "all", "a", false, "include cancelled projects")
 	flags.StringSliceVarP(&f.Statuses, "status", "s", nil, "filter by project status (repeatable)")
 	flags.IntSliceVar(&f.Priorities, "priority", nil, "filter by priority (repeatable)")
 	flags.StringSliceVar(&f.Areas, "area", nil, "filter by area (repeatable)")
@@ -469,11 +471,11 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 // projectListOrder lists project statuses in the order `projects list` groups
 // them for display: earliest lifecycle stage to latest, with blocked slotted
 // where a project actually stalls (right after in-progress) rather than
-// ranked by how close it looks to done. Done and cancelled sort last and are
-// normally absent — see openProjectStatuses.
+// ranked by how close it looks to done. Cancelled sorts last and is normally
+// absent — see openProjectStatuses.
 var projectListOrder = []model.ProjectStatus{
-	model.ProjectIdea,
-	model.ProjectTodo,
+	model.ProjectBacklog,
+	model.ProjectReady,
 	model.ProjectInProgress,
 	model.ProjectBlocked,
 	model.ProjectInReview,

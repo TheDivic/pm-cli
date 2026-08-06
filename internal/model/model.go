@@ -11,8 +11,8 @@ type ProjectStatus string
 
 // Project lifecycle states.
 const (
-	ProjectIdea       ProjectStatus = "idea"
-	ProjectTodo       ProjectStatus = "todo"
+	ProjectBacklog    ProjectStatus = "backlog"
+	ProjectReady      ProjectStatus = "ready"
 	ProjectInProgress ProjectStatus = "in-progress"
 	ProjectInReview   ProjectStatus = "in-review"
 	ProjectBlocked    ProjectStatus = "blocked"
@@ -23,7 +23,7 @@ const (
 // Valid reports whether s is a recognized project status.
 func (s ProjectStatus) Valid() bool {
 	switch s {
-	case ProjectIdea, ProjectTodo, ProjectInProgress, ProjectInReview,
+	case ProjectBacklog, ProjectReady, ProjectInProgress, ProjectInReview,
 		ProjectBlocked, ProjectCancelled, ProjectDone:
 		return true
 	default:
@@ -34,8 +34,8 @@ func (s ProjectStatus) Valid() bool {
 // ProjectStatuses lists every project status in lifecycle order. Completion and
 // shell completion both read it, so a new status only has to be added once.
 var ProjectStatuses = []ProjectStatus{
-	ProjectIdea,
-	ProjectTodo,
+	ProjectBacklog,
+	ProjectReady,
 	ProjectInProgress,
 	ProjectInReview,
 	ProjectBlocked,
