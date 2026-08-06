@@ -31,6 +31,7 @@ func newProjectsCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	}
 	cmd.AddCommand(newProjectsListCmd(opts))
 	cmd.AddCommand(newProjectsShowCmd(opts))
+	cmd.AddCommand(newProjectsDocCmd(opts))
 	cmd.AddCommand(newProjectsValidateCmd(opts))
 	cmd.AddCommand(newProjectsFormatCmd(opts))
 	cmd.AddCommand(newProjectsCreateCmd(opts, clk))
@@ -51,24 +52,75 @@ func newProjectsShowCmd(opts *GlobalOptions) *cobra.Command {
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
-			var target *discover.Project
-			for i := range ws.Projects {
-				if ws.Projects[i].ID() == args[0] {
-					target = &ws.Projects[i]
-					break
-				}
-			}
-			if target == nil {
-				return pmerr.Usage("no project with id %q under the discovery root", args[0]).WithProject(args[0])
+			target, err := findProject(ws, args[0])
+			if err != nil {
+				return err
 			}
 			if opts.JSON {
 				return writeProjectShowJSON(cmd.OutOrStdout(), target)
 			}
 			writeProjectShowText(cmd.OutOrStdout(), target)
-			writeProjectDoc(cmd.OutOrStdout(), target)
 			return nil
 		},
 	}
+}
+
+// findProject resolves a project ID to its record, or a usage error naming
+// the ID — the shared "no such project" case for show, doc, and validate.
+func findProject(ws *discover.Workspace, id string) (*discover.Project, error) {
+	for i := range ws.Projects {
+		if ws.Projects[i].ID() == id {
+			return &ws.Projects[i], nil
+		}
+	}
+	return nil, pmerr.Usage("no project with id %q under the discovery root", id).WithProject(id)
+}
+
+// ---- projects doc ----
+
+func newProjectsDocCmd(opts *GlobalOptions) *cobra.Command {
+	return &cobra.Command{
+		Use:   "doc <project-id>",
+		Short: "Show a project's Markdown document",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			color := resolveColor(opts)
+			if err := validateColor(color); err != nil {
+				return err
+			}
+			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
+			if err != nil {
+				return pmerr.IO("cannot discover projects: %v", err)
+			}
+			target, err := findProject(ws, args[0])
+			if err != nil {
+				return err
+			}
+			rel, content, ok := projectDoc(target)
+			if !ok || strings.TrimSpace(content) == "" {
+				return pmerr.Usage("project %q has no document", args[0]).WithProject(args[0])
+			}
+			if opts.JSON {
+				return writeProjectDocJSON(cmd.OutOrStdout(), args[0], rel, content)
+			}
+			w := cmd.OutOrStdout()
+			fmt.Fprintln(w, mdrender.Render(content, useColor(w, color), docWidth(w)))
+			return nil
+		},
+	}
+}
+
+type projectDocDetail struct {
+	ProjectID string `json:"project_id"`
+	DocPath   string `json:"doc_path"`
+	Doc       string `json:"doc"`
+}
+
+func writeProjectDocJSON(w io.Writer, projectID, docPath, doc string) error {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return enc.Encode(projectDocDetail{ProjectID: projectID, DocPath: docPath, Doc: doc})
 }
 
 type projectDetail struct {
@@ -86,7 +138,6 @@ type projectDetail struct {
 	Completed    string              `json:"completed,omitempty"`
 	Path         string              `json:"path"`
 	DocPath      string              `json:"doc_path,omitempty"`
-	Doc          string              `json:"doc,omitempty"`
 	TaskCounts   map[string]int      `json:"task_counts"`
 }
 
@@ -108,9 +159,9 @@ func countableTotal(counts map[string]int) int {
 
 func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
 	pr := p.Doc.Project
-	// JSON carries the document as stored: rendering is for terminals, and a
-	// consumer that wants Markdown wants the source.
-	docPath, doc, _ := projectDoc(p)
+	// show reports only whether a document exists and where; `projects doc`
+	// carries its content, rendered for a terminal or raw in JSON.
+	docPath, _ := projectDocPath(p)
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
@@ -129,7 +180,6 @@ func writeProjectShowJSON(w io.Writer, p *discover.Project) error {
 		Completed:    pr.Completed,
 		Path:         p.Path,
 		DocPath:      docPath,
-		Doc:          doc,
 		TaskCounts:   taskCounts(p.Doc),
 	})
 }
@@ -155,6 +205,9 @@ func writeProjectShowText(w io.Writer, p *discover.Project) {
 		field(w, "Cancelled", fmt.Sprintf("%s: %s", pr.Cancellation.Date, pr.Cancellation.Reason))
 	}
 	field(w, "Path", p.Path)
+	if rel, ok := projectDocPath(p); ok {
+		field(w, "Doc", rel)
+	}
 	counts := taskCounts(p.Doc)
 	cancelled := counts[string(model.TaskCancelled)]
 	countable := countableTotal(counts)
@@ -190,26 +243,18 @@ func projectDoc(p *discover.Project) (relPath, content string, ok bool) {
 	return filepath.Join(filepath.Dir(p.Path), name), string(data), true
 }
 
-// writeProjectDoc appends the project's rendered Markdown document, so `projects
-// show` reports what the project *is* alongside its state. A missing document is
-// silently skipped.
-func writeProjectDoc(w io.Writer, p *discover.Project) {
-	rel, content, ok := projectDoc(p)
-	if !ok || strings.TrimSpace(content) == "" {
-		return
+// projectDocPath reports whether a project has a Markdown document and its
+// path relative to the discovery root, without reading its contents — `show`
+// only needs to point at it, not render it.
+func projectDocPath(p *discover.Project) (relPath string, ok bool) {
+	if p.Doc == nil {
+		return "", false
 	}
-	fmt.Fprintf(w, "\n%s\n\n%s\n", docSeparator(rel), mdrender.Render(content, useColor(w)))
-}
-
-// docSeparator draws a labeled rule so the document is clearly a different kind
-// of content from the fields above it.
-func docSeparator(label string) string {
-	const width = 72
-	prefix := "── " + label + " "
-	if n := width - len([]rune(prefix)); n > 0 {
-		return prefix + strings.Repeat("─", n)
+	name := p.Doc.Project.ID + ".md"
+	if _, err := os.Stat(filepath.Join(filepath.Dir(p.AbsPath), name)); err != nil {
+		return "", false
 	}
-	return prefix
+	return filepath.Join(filepath.Dir(p.Path), name), true
 }
 
 // taskStatusOrder lists task statuses in lifecycle order for progress display.
@@ -488,13 +533,11 @@ func selectTargets(ws *discover.Workspace, args []string, _ bool) ([]*discover.P
 		}
 		return out, nil
 	}
-	id := args[0]
-	for i := range ws.Projects {
-		if ws.Projects[i].ID() == id {
-			return []*discover.Project{&ws.Projects[i]}, nil
-		}
+	p, err := findProject(ws, args[0])
+	if err != nil {
+		return nil, err
 	}
-	return nil, pmerr.Usage("no project with id %q under the discovery root", id).WithProject(id)
+	return []*discover.Project{p}, nil
 }
 
 type fileReport struct {

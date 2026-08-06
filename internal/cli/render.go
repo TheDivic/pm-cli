@@ -5,6 +5,10 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/x/term"
+
+	"github.com/TheDivic/pm-cli/internal/pmerr"
 )
 
 // labelWidth aligns the value column in key/value detail output.
@@ -24,10 +28,50 @@ func optField(w io.Writer, label, value string) {
 
 func joinComma(v []string) string { return strings.Join(v, ", ") }
 
-// useColor reports whether ANSI styling is appropriate for w. Per the CLI
-// specification, color is used only when the destination is a terminal and
-// NO_COLOR is unset — so piped output and test buffers stay plain.
-func useColor(w io.Writer) bool {
+// validColorModes are the values accepted by --color.
+var validColorModes = map[string]bool{"auto": true, "always": true, "never": true}
+
+// colorEnvVar names the environment variable that supplies a default --color
+// mode when the flag is not given, mirroring $PM_ROOT for --root.
+const colorEnvVar = "PM_COLOR"
+
+// resolveColor returns the effective --color mode: the flag takes precedence
+// when given, then $PM_COLOR, then "auto". opts.Color is empty when --color
+// was not passed, since the flag has no default of its own — that way a
+// user can set $PM_COLOR once instead of passing --color on every call.
+func resolveColor(opts *GlobalOptions) string {
+	if opts.Color != "" {
+		return opts.Color
+	}
+	if env := os.Getenv(colorEnvVar); env != "" {
+		return env
+	}
+	return "auto"
+}
+
+// validateColor rejects a --color value that isn't auto, always, or never,
+// before it reaches useColor.
+func validateColor(mode string) error {
+	if !validColorModes[mode] {
+		return pmerr.Usage("invalid --color value %q: must be auto, always, or never", mode)
+	}
+	return nil
+}
+
+// useColor reports whether ANSI styling is appropriate for w. mode is the
+// validated --color flag: "always" and "never" bypass the terminal check
+// entirely, which is the point of the override — piping into a pager like
+// `less -R` otherwise loses styling because the pipe isn't a terminal. The
+// default, "auto", keeps the original behavior: color only when NO_COLOR is
+// unset and w is a real terminal, so piped output and test buffers stay
+// plain unless the caller asks for color explicitly.
+func useColor(w io.Writer, mode string) bool {
+	switch mode {
+	case "always":
+		return true
+	case "never":
+		return false
+	}
 	if _, set := os.LookupEnv("NO_COLOR"); set {
 		return false
 	}
@@ -40,6 +84,37 @@ func useColor(w io.Writer) bool {
 		return false
 	}
 	return info.Mode()&os.ModeCharDevice != 0
+}
+
+// docWidth is the fallback and bound for the width Markdown documents are
+// wrapped and ruled to: wide enough to read comfortably, capped so a maximized
+// terminal does not stretch prose across the whole screen.
+const (
+	docWidthDefault = 72
+	docWidthMin     = 40
+	docWidthMax     = 100
+)
+
+// docWidth reports the column width to wrap a project document to. Piped or
+// non-terminal output uses the same width the CLI has always ruled its
+// document separator at.
+func docWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok {
+		return docWidthDefault
+	}
+	width, _, err := term.GetSize(f.Fd())
+	if err != nil || width <= 0 {
+		return docWidthDefault
+	}
+	switch {
+	case width < docWidthMin:
+		return docWidthMin
+	case width > docWidthMax:
+		return docWidthMax
+	default:
+		return width
+	}
 }
 
 // filledCells returns how many of width cells to fill for done out of total,

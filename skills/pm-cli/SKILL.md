@@ -54,12 +54,14 @@ need a project or a path — just the ID.
 | `--root <path>` | discovery root (default `$PM_ROOT`, then cwd) |
 | `--json` | machine-readable output; **use this whenever you will parse the result** |
 | `--no-ignore` | include paths `.gitignore` would exclude |
+| `--color <auto\|always\|never>` | override terminal-color detection; `always` keeps `projects doc` output styled through a pipe into a pager (`pm projects doc <id> --color always \| less -R`); default `auto`, or `$PM_COLOR` |
 
 ## Reading
 
 ```sh
 pm projects list [-a] [-s <status>]... [--priority <n>]... [--area <a>]...
 pm projects show <project-id>
+pm projects doc <project-id>
 pm projects validate [<project-id> | --all]
 pm tasks list [-a] [-p <project>]... [-s <status>]... [-g <tag>]... [--area <a>]... \
               [--parent <task-id>] [--blocked] [--due-before <date>] [--due-on <date>]
@@ -79,9 +81,10 @@ pm tags
   includes them; an explicit `-s` overrides). It orders in-review projects
   first, then in-progress, then the rest — and within each group by priority,
   creation date, ID.
-- `projects show` also returns the project's Markdown document. In `--json` it
-  is the raw source under `doc`, with `doc_path` alongside — read that instead
-  of opening the file yourself.
+- `projects show` reports a `Doc`/`doc_path` pointer when the project has a
+  Markdown document, but not its content. Use `projects doc <project-id>` for
+  that — rendered for a terminal by default, or the raw source under `doc` in
+  `--json`. Read it that way instead of opening the file yourself.
 - `pm tags` lists the tag vocabulary with usage counts — check it before
   inventing a new tag.
 
