@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
@@ -315,7 +314,8 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 			if opts.JSON {
 				return writeProjectsListJSON(cmd.OutOrStdout(), ordered)
 			}
-			return writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ordered, ws)
+			writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ordered, ws)
+			return nil
 		},
 	}
 	flags := cmd.Flags()
@@ -461,22 +461,84 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 	return enc.Encode(out)
 }
 
-func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) error {
-	tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-	// PROGRESS is last so its multibyte bar cannot skew tabwriter's alignment
-	// of the preceding columns. Priority is not shown here: it already drives
-	// the sort order, and `projects show` reports it.
-	fmt.Fprintln(tw, "ID\tTITLE\tSTATUS\tCREATED\tPROGRESS")
+// projectListOrder lists project statuses in the order `projects list` groups
+// them for display: earliest lifecycle stage to latest, with blocked slotted
+// where a project actually stalls (right after in-progress) rather than
+// ranked by how close it looks to done. Done and cancelled sort last and are
+// normally absent — see openProjectStatuses.
+var projectListOrder = []model.ProjectStatus{
+	model.ProjectIdea,
+	model.ProjectTodo,
+	model.ProjectInProgress,
+	model.ProjectBlocked,
+	model.ProjectInReview,
+	model.ProjectDone,
+	model.ProjectCancelled,
+}
+
+// writeProjectsListText renders projects grouped by status instead of one
+// flat table, so the list reads like a lightweight kanban board: each section
+// is a lifecycle stage, labeled with its count, and empty stages print
+// nothing. The inbox is pinned above every section as a single line — its own
+// status and progress bar are meaningless for a perpetual capture bucket, so
+// it reports how much is waiting in it instead. ID and title columns share
+// one width across every section so progress bars line up regardless of
+// which section they're in; priority is not shown, since it already drives
+// ordering within a section and `projects show` reports it.
+func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) {
+	var inbox *discover.Project
+	rest := make([]*discover.Project, 0, len(ordered))
 	for _, p := range ordered {
-		c := taskCounts(p.Doc)
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-			p.Doc.Project.ID, p.Doc.Project.Title, p.Doc.Project.Status,
-			dateLabel(p.Doc.Project.Created),
-			miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
+		if p.Doc.Project.ID == inboxProjectID {
+			inbox = p
+			continue
+		}
+		rest = append(rest, p)
 	}
-	if err := tw.Flush(); err != nil {
-		return err
+
+	idWidth, titleWidth := 0, 0
+	for _, p := range rest {
+		if n := len([]rune(p.Doc.Project.ID)); n > idWidth {
+			idWidth = n
+		}
+		if n := len([]rune(p.Doc.Project.Title)); n > titleWidth {
+			titleWidth = n
+		}
 	}
+
+	if inbox != nil {
+		fmt.Fprintf(stdout, "INBOX · %d\n\n", len(inbox.Doc.Tasks))
+	}
+
+	wrote := false
+	for _, status := range projectListOrder {
+		var rows []*discover.Project
+		for _, p := range rest {
+			if p.Doc.Project.Status == status {
+				rows = append(rows, p)
+			}
+		}
+		if len(rows) == 0 {
+			continue
+		}
+		if wrote {
+			fmt.Fprintln(stdout)
+		}
+		wrote = true
+		fmt.Fprintf(stdout, "%s · %d\n", strings.ToUpper(string(status)), len(rows))
+		for _, p := range rows {
+			c := taskCounts(p.Doc)
+			fmt.Fprintf(stdout, "  %-*s  %-*s  %s  %s\n",
+				idWidth, p.Doc.Project.ID,
+				titleWidth, p.Doc.Project.Title,
+				dateLabel(p.Doc.Project.Created),
+				miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
+		}
+	}
+	if inbox == nil && !wrote {
+		fmt.Fprintln(stdout, "no projects match the given filters")
+	}
+
 	// Load failures and conflicts are surfaced as non-fatal warnings; use
 	// `projects validate` for a full report.
 	for i := range ws.Projects {
@@ -487,7 +549,6 @@ func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project
 	for _, c := range ws.Conflicts {
 		fmt.Fprintf(stderr, "warning: duplicate %s %q in %v\n", c.Kind, c.Value, c.Paths)
 	}
-	return nil
 }
 
 // ---- projects validate ----

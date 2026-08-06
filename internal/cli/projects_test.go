@@ -58,8 +58,10 @@ func TestProjectsListText(t *testing.T) {
 	if !strings.Contains(stdout, "demo") || !strings.Contains(stdout, "Demo Project") {
 		t.Fatalf("list output missing project: %q", stdout)
 	}
-	if !strings.Contains(stdout, "PROGRESS") || !strings.Contains(stdout, "0%") {
-		t.Fatalf("list output missing progress column: %q", stdout)
+	// Grouped by status: a section header naming the status and count, then
+	// the project under it with a progress bar.
+	if !strings.Contains(stdout, "IN-PROGRESS · 1") || !strings.Contains(stdout, "0%") {
+		t.Fatalf("list output missing the in-progress section: %q", stdout)
 	}
 }
 
@@ -97,6 +99,13 @@ func listProjectFile(id, status, prio, created string) string {
 	}
 	p += "\ntasks: []\n"
 	return p
+}
+
+// listProjectFileWithTask is listProjectFile plus one open task, so
+// miniProgress has something countable and renders a bar instead of "-".
+func listProjectFileWithTask(id, status string) string {
+	p := listProjectFile(id, status, "", "2026-07-31")
+	return strings.Replace(p, "\ntasks: []\n", "\ntasks:\n  - id: "+id[:1]+"-001\n    title: First\n    status: todo\n    created: \"2026-07-31\"\n", 1)
 }
 
 func listIDs(t *testing.T, root string, extra ...string) []string {
@@ -275,18 +284,111 @@ func TestProjectInReviewValidates(t *testing.T) {
 	}
 }
 
-func TestProjectsListPutsInReviewFirst(t *testing.T) {
+func TestProjectsListSectionsOrderByLifecycleStage(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
 	writeFile(t, filepath.Join(root, "review", "review.tasks.yaml"), projectInReview)
+	writeFile(t, filepath.Join(root, "todo.tasks.yaml"), listProjectFile("todoproj", "todo", "", "2026-07-31"))
+	writeFile(t, filepath.Join(root, "blocked.tasks.yaml"), listProjectFile("blockedproj", "blocked", "", "2026-07-31"))
 
 	_, stdout, _ := run("--root", root, "projects", "list")
-	review, progress := strings.Index(stdout, "review"), strings.Index(stdout, "demo")
-	if review < 0 || progress < 0 {
-		t.Fatalf("both projects should be listed: %q", stdout)
+	// Sections read top to bottom as the pipeline: todo, in-progress, blocked,
+	// in-review — not "closest to done first". blocked sits right after
+	// in-progress, where a project actually stalls, rather than after
+	// in-review.
+	positions := map[string]int{
+		"TODO":        strings.Index(stdout, "TODO ·"),
+		"IN-PROGRESS": strings.Index(stdout, "IN-PROGRESS ·"),
+		"BLOCKED":     strings.Index(stdout, "BLOCKED ·"),
+		"IN-REVIEW":   strings.Index(stdout, "IN-REVIEW ·"),
 	}
-	if review > progress {
-		t.Fatalf("in-review should sort before in-progress:\n%s", stdout)
+	for label, pos := range positions {
+		if pos < 0 {
+			t.Fatalf("missing %s section: %q", label, stdout)
+		}
+	}
+	inOrder := positions["TODO"] < positions["IN-PROGRESS"] &&
+		positions["IN-PROGRESS"] < positions["BLOCKED"] &&
+		positions["BLOCKED"] < positions["IN-REVIEW"]
+	if !inOrder {
+		t.Fatalf("sections out of order: %v\n%s", positions, stdout)
+	}
+}
+
+const inboxProjectFile = `schema-version: 1
+
+project:
+  id: inbox
+  title: Inbox
+  task-id-prefix: in
+  status: in-progress
+  created: "2026-07-31"
+  started: "2026-07-31"
+
+tasks:
+  - id: in-001
+    title: First
+    status: todo
+    created: "2026-07-31"
+  - id: in-002
+    title: Second
+    status: todo
+    created: "2026-07-31"
+`
+
+func TestProjectsListPinsInboxWithATaskCount(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "inbox", "inbox.tasks.yaml"), inboxProjectFile)
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
+
+	_, stdout, _ := run("--root", root, "projects", "list")
+	if !strings.Contains(stdout, "INBOX · 2") {
+		t.Fatalf("expected a pinned inbox line with its task count: %q", stdout)
+	}
+	inboxPos, sectionPos := strings.Index(stdout, "INBOX ·"), strings.Index(stdout, "IN-PROGRESS ·")
+	if inboxPos < 0 || sectionPos < 0 || inboxPos > sectionPos {
+		t.Fatalf("inbox should be pinned above the status sections: %q", stdout)
+	}
+	// The inbox is not also listed as a regular in-progress project, and its
+	// own status/progress bar are not shown — just the count.
+	if strings.Contains(stdout, "Inbox") || strings.Contains(stdout, "50%") {
+		t.Fatalf("inbox should not appear as a normal project row: %q", stdout)
+	}
+}
+
+func TestProjectsListColumnsAlignAcrossSections(t *testing.T) {
+	root := t.TempDir()
+	// A task each, so miniProgress renders a bar instead of "-" for nothing
+	// countable — the alignment claim is about where the bar starts.
+	writeFile(t, filepath.Join(root, "a.tasks.yaml"), listProjectFileWithTask("a-very-long-project-id", "todo"))
+	writeFile(t, filepath.Join(root, "b.tasks.yaml"), listProjectFileWithTask("b", "in-progress"))
+
+	_, stdout, _ := run("--root", root, "projects", "list")
+	lines := strings.Split(stdout, "\n")
+	var barCols []int
+	for _, l := range lines {
+		if i := strings.IndexAny(l, "█░"); i >= 0 {
+			barCols = append(barCols, i)
+		}
+	}
+	if len(barCols) != 2 {
+		t.Fatalf("expected two progress bars: %q", stdout)
+	}
+	if barCols[0] != barCols[1] {
+		t.Fatalf("progress bars should start at the same column across sections: %v\n%s", barCols, stdout)
+	}
+}
+
+func TestProjectsListEmptyResultReportsNothingMatched(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
+
+	code, stdout, stderr := run("--root", root, "projects", "list", "--status", "idea")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "no projects match") {
+		t.Fatalf("expected an empty-result message: %q", stdout)
 	}
 }
 
