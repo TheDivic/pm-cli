@@ -88,10 +88,10 @@ func TestEmitEmptyTasks(t *testing.T) {
 		SchemaVersion: 1,
 		Project: model.Project{
 			ID: "empty", Title: "Empty", TaskIDPrefix: "em",
-			Status: model.ProjectIdea, Created: "2026-07-31",
+			Status: model.ProjectBacklog, Created: "2026-07-31",
 		},
 	}
-	want := "schema-version: 1\n\nproject:\n  id: empty\n  title: Empty\n  task-id-prefix: em\n  status: idea\n  created: \"2026-07-31\"\n\ntasks: []\n"
+	want := "schema-version: 1\n\nproject:\n  id: empty\n  title: Empty\n  task-id-prefix: em\n  status: backlog\n  created: \"2026-07-31\"\n\ntasks: []\n"
 	if got := string(Document(doc)); got != want {
 		t.Fatalf("empty tasks emit:\n%q\nwant\n%q", got, want)
 	}
@@ -119,7 +119,7 @@ func quotingDoc() *model.Document {
 		SchemaVersion: 1,
 		Project: model.Project{
 			ID: "quote", Title: "Quote", TaskIDPrefix: "q",
-			Status: model.ProjectIdea, Created: "2026-07-31",
+			Status: model.ProjectBacklog, Created: "2026-07-31",
 		},
 		Tasks: []model.Task{
 			{ID: "q-001", Title: "1.0", Status: model.TaskTodo, Created: "2026-07-31"},             // numeric-looking

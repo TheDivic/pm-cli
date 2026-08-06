@@ -56,7 +56,7 @@ func newProjectsCreateCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	f.StringVarP(&title, "title", "t", "", "project title (required)")
 	f.StringVar(&prefix, "task-id-prefix", "", "task-ID prefix (required)")
 	f.StringVar(&path, "path", "", "task-file path (default <root>/<id>/<id>.tasks.yaml)")
-	f.StringVarP(&status, "status", "s", "idea", "initial project status")
+	f.StringVarP(&status, "status", "s", "backlog", "initial project status")
 	f.IntVar(&priority, "priority", 0, "project priority")
 	f.StringVar(&due, "due", "", "due date (YYYY-MM-DD)")
 	f.StringSliceVar(&areas, "area", nil, "area slug (repeatable)")

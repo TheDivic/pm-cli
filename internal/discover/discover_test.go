@@ -10,7 +10,7 @@ import (
 func projectFile(id, prefix string) string {
 	return "schema-version: 1\n\nproject:\n  id: " + id +
 		"\n  title: " + id + "\n  task-id-prefix: " + prefix +
-		"\n  status: idea\n  created: \"2026-07-31\"\n\ntasks: []\n"
+		"\n  status: backlog\n  created: \"2026-07-31\"\n\ntasks: []\n"
 }
 
 func write(t *testing.T, path, content string) {
@@ -141,7 +141,7 @@ func TestDiscoverChecksAreaExistence(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "areas", "known.md"), "# known\n")
 	content := "schema-version: 1\n\nproject:\n  id: p\n  title: P\n  task-id-prefix: pp\n" +
-		"  status: idea\n  areas:\n    - known\n    - missing\n  created: \"2026-07-31\"\n\ntasks: []\n"
+		"  status: backlog\n  areas:\n    - known\n    - missing\n  created: \"2026-07-31\"\n\ntasks: []\n"
 	write(t, filepath.Join(root, "p", "p.tasks.yaml"), content)
 
 	ws, err := Discover(root, false)

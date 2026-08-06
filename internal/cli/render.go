@@ -86,6 +86,23 @@ func useColor(w io.Writer, mode string) bool {
 	return info.Mode()&os.ModeCharDevice != 0
 }
 
+// ansiBold and ansiReset style the section headers in `projects list`. Kept
+// minimal and local rather than reaching for mdrender's styling — that
+// package renders Markdown prose; this is one bold label.
+const (
+	ansiBold  = "\x1b[1m"
+	ansiReset = "\x1b[0m"
+)
+
+// styleBold wraps s in bold when color is true, and returns it unchanged
+// otherwise.
+func styleBold(s string, color bool) string {
+	if !color {
+		return s
+	}
+	return ansiBold + s + ansiReset
+}
+
 // docWidth is the fallback and bound for the width Markdown documents are
 // wrapped and ruled to: wide enough to read comfortably, capped so a maximized
 // terminal does not stretch prose across the whole screen.

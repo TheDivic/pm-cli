@@ -91,13 +91,14 @@ func TestCompleteStatusPositions(t *testing.T) {
 		t.Fatalf("already-named task offered again: %v", second)
 	}
 
-	// Projects have their own vocabulary, including the new in-review status.
+	// Projects have their own vocabulary, including the in-review status tasks
+	// don't have.
 	proj := complete(t, "--root", root, "projects", "status", "alpha", "")
-	if !has(proj, "in-review") || !has(proj, "idea") {
+	if !has(proj, "in-review") || !has(proj, "backlog") {
 		t.Fatalf("project statuses = %v", proj)
 	}
-	if has(proj, "backlog") {
-		t.Fatalf("backlog is a task status, not a project one: %v", proj)
+	if has(proj, "todo") {
+		t.Fatalf("todo is a task status, not a project one: %v", proj)
 	}
 }
 

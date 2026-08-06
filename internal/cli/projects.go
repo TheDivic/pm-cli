@@ -280,15 +280,17 @@ func rootOrCWD(opts *GlobalOptions) string {
 
 // ---- projects list ----
 
-// openProjectStatuses are the non-terminal project statuses shown by `projects
-// list` by default. Done and cancelled projects are history: they accumulate
-// without bound and would eventually bury the work in flight.
+// openProjectStatuses are the project statuses shown by `projects list` by
+// default. Cancelled is the one status excluded: it is work that will never
+// be finished, and, unlike done, has no value as a visible record — done
+// projects stay visible so completed work is still easy to point at.
 var openProjectStatuses = []string{
-	string(model.ProjectIdea),
-	string(model.ProjectTodo),
+	string(model.ProjectBacklog),
+	string(model.ProjectReady),
 	string(model.ProjectInProgress),
 	string(model.ProjectInReview),
 	string(model.ProjectBlocked),
+	string(model.ProjectDone),
 }
 
 func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
@@ -301,12 +303,16 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 		Short: "List discovered projects, with optional filters",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			color := resolveColor(opts)
+			if err := validateColor(color); err != nil {
+				return err
+			}
 			ws, err := discover.Discover(rootOrCWD(opts), opts.NoIgnore)
 			if err != nil {
 				return pmerr.IO("cannot discover projects: %v", err)
 			}
-			// Mirrors tasks list: hide finished work unless asked, and let an
-			// explicit --status say exactly what to show.
+			// Hide cancelled work unless asked, and let an explicit --status
+			// say exactly what to show.
 			if !all && !cmd.Flags().Changed("status") {
 				f.Statuses = openProjectStatuses
 			}
@@ -314,12 +320,13 @@ func newProjectsListCmd(opts *GlobalOptions) *cobra.Command {
 			if opts.JSON {
 				return writeProjectsListJSON(cmd.OutOrStdout(), ordered)
 			}
-			writeProjectsListText(cmd.OutOrStdout(), cmd.ErrOrStderr(), ordered, ws)
+			w := cmd.OutOrStdout()
+			writeProjectsListText(w, cmd.ErrOrStderr(), ordered, ws, useColor(w, color))
 			return nil
 		},
 	}
 	flags := cmd.Flags()
-	flags.BoolVarP(&all, "all", "a", false, "include done and cancelled projects")
+	flags.BoolVarP(&all, "all", "a", false, "include cancelled projects")
 	flags.StringSliceVarP(&f.Statuses, "status", "s", nil, "filter by project status (repeatable)")
 	flags.IntSliceVar(&f.Priorities, "priority", nil, "filter by priority (repeatable)")
 	flags.StringSliceVar(&f.Areas, "area", nil, "filter by area (repeatable)")
@@ -464,11 +471,11 @@ func writeProjectsListJSON(w io.Writer, ordered []*discover.Project) error {
 // projectListOrder lists project statuses in the order `projects list` groups
 // them for display: earliest lifecycle stage to latest, with blocked slotted
 // where a project actually stalls (right after in-progress) rather than
-// ranked by how close it looks to done. Done and cancelled sort last and are
-// normally absent — see openProjectStatuses.
+// ranked by how close it looks to done. Cancelled sorts last and is normally
+// absent — see openProjectStatuses.
 var projectListOrder = []model.ProjectStatus{
-	model.ProjectIdea,
-	model.ProjectTodo,
+	model.ProjectBacklog,
+	model.ProjectReady,
 	model.ProjectInProgress,
 	model.ProjectBlocked,
 	model.ProjectInReview,
@@ -479,64 +486,61 @@ var projectListOrder = []model.ProjectStatus{
 // writeProjectsListText renders projects grouped by status instead of one
 // flat table, so the list reads like a lightweight kanban board: each section
 // is a lifecycle stage, labeled with its count, and empty stages print
-// nothing. The inbox is pinned above every section as a single line — its own
-// status and progress bar are meaningless for a perpetual capture bucket, so
-// it reports how much is waiting in it instead. ID and title columns share
-// one width across every section so progress bars line up regardless of
-// which section they're in; priority is not shown, since it already drives
-// ordering within a section and `projects show` reports it.
-func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace) {
-	var inbox *discover.Project
+// nothing. The inbox is a project, not a status, so it is left out entirely —
+// use `pm tasks list -p inbox` for it. ID and title columns share one width
+// across every section, including the header row, so progress bars line up
+// regardless of which section they're in; priority is not shown, since it
+// already drives ordering within a section and `projects show` reports it.
+// Section headers are bold rather than ruled off with a divider, so they
+// still read as labels and not data without the extra visual weight of a
+// rule repeated under every section.
+func writeProjectsListText(stdout, stderr io.Writer, ordered []*discover.Project, ws *discover.Workspace, color bool) {
 	rest := make([]*discover.Project, 0, len(ordered))
 	for _, p := range ordered {
-		if p.Doc.Project.ID == inboxProjectID {
-			inbox = p
-			continue
-		}
-		rest = append(rest, p)
-	}
-
-	idWidth, titleWidth := 0, 0
-	for _, p := range rest {
-		if n := len([]rune(p.Doc.Project.ID)); n > idWidth {
-			idWidth = n
-		}
-		if n := len([]rune(p.Doc.Project.Title)); n > titleWidth {
-			titleWidth = n
+		if p.Doc.Project.ID != inboxProjectID {
+			rest = append(rest, p)
 		}
 	}
 
-	if inbox != nil {
-		fmt.Fprintf(stdout, "INBOX · %d\n\n", len(inbox.Doc.Tasks))
-	}
-
-	wrote := false
-	for _, status := range projectListOrder {
-		var rows []*discover.Project
+	if len(rest) == 0 {
+		fmt.Fprintln(stdout, "no projects match the given filters")
+	} else {
+		idWidth, titleWidth := len("ID"), len("TITLE")
 		for _, p := range rest {
-			if p.Doc.Project.Status == status {
-				rows = append(rows, p)
+			if n := len([]rune(p.Doc.Project.ID)); n > idWidth {
+				idWidth = n
+			}
+			if n := len([]rune(p.Doc.Project.Title)); n > titleWidth {
+				titleWidth = n
 			}
 		}
-		if len(rows) == 0 {
-			continue
+
+		fmt.Fprintf(stdout, "  %-*s  %-*s  CREATED     PROGRESS\n\n", idWidth, "ID", titleWidth, "TITLE")
+		wrote := false
+		for _, status := range projectListOrder {
+			var rows []*discover.Project
+			for _, p := range rest {
+				if p.Doc.Project.Status == status {
+					rows = append(rows, p)
+				}
+			}
+			if len(rows) == 0 {
+				continue
+			}
+			if wrote {
+				fmt.Fprintln(stdout)
+			}
+			wrote = true
+			fmt.Fprintf(stdout, "  %s\n", styleBold(fmt.Sprintf("%s · %d", strings.ToUpper(string(status)), len(rows)), color))
+			for _, p := range rows {
+				c := taskCounts(p.Doc)
+				fmt.Fprintf(stdout, "  %-*s  %-*s  %s  %s\n",
+					idWidth, p.Doc.Project.ID,
+					titleWidth, p.Doc.Project.Title,
+					dateLabel(p.Doc.Project.Created),
+					miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
+			}
 		}
-		if wrote {
-			fmt.Fprintln(stdout)
-		}
-		wrote = true
-		fmt.Fprintf(stdout, "%s · %d\n", strings.ToUpper(string(status)), len(rows))
-		for _, p := range rows {
-			c := taskCounts(p.Doc)
-			fmt.Fprintf(stdout, "  %-*s  %-*s  %s  %s\n",
-				idWidth, p.Doc.Project.ID,
-				titleWidth, p.Doc.Project.Title,
-				dateLabel(p.Doc.Project.Created),
-				miniProgress(c[string(model.TaskDone)], countableTotal(c), 10))
-		}
-	}
-	if inbox == nil && !wrote {
-		fmt.Fprintln(stdout, "no projects match the given filters")
 	}
 
 	// Load failures and conflicts are surfaced as non-fatal warnings; use
