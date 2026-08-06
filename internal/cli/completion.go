@@ -213,7 +213,7 @@ func completeCommandTree(root *cobra.Command, opts *GlobalOptions) {
 	})
 
 	if projects, _, err := root.Find([]string{"projects"}); err == nil {
-		for _, name := range []string{"show", "edit", "validate", "format"} {
+		for _, name := range []string{"show", "doc", "edit", "validate", "format"} {
 			if c, _, ferr := projects.Find([]string{name}); ferr == nil {
 				c.ValidArgsFunction = projectIDs
 			}

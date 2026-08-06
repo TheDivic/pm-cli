@@ -309,7 +309,7 @@ A short description with **emphasis** and ` + "`code`" + `.
 - [ ] Picked a renderer
 `
 
-func TestProjectsShowRendersTheProjectDocument(t *testing.T) {
+func TestProjectsShowReportsTheDocumentPathOnly(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
 	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
@@ -318,18 +318,17 @@ func TestProjectsShowRendersTheProjectDocument(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	// The record still comes first, then the document behind a labeled rule.
 	if !strings.Contains(stdout, "Prefix:") {
 		t.Fatalf("project fields missing: %s", stdout)
 	}
-	for _, want := range []string{"demo.md", "Demo Project", "Decisions", "[✓] Picked YAML", "[ ] Picked a renderer"} {
-		if !strings.Contains(stdout, want) {
-			t.Fatalf("rendered document missing %q:\n%s", want, stdout)
-		}
+	if !strings.Contains(stdout, "Doc:") || !strings.Contains(stdout, "demo.md") {
+		t.Fatalf("doc path missing: %s", stdout)
 	}
-	// Markup is consumed, and a non-terminal writer gets no escape codes.
-	if strings.Contains(stdout, "**") || strings.Contains(stdout, "\x1b") {
-		t.Fatalf("output should be plain rendered text:\n%q", stdout)
+	// show points at the document; it does not render it. That's `projects doc`.
+	for _, wantAbsent := range []string{"Decisions", "Picked YAML", "──"} {
+		if strings.Contains(stdout, wantAbsent) {
+			t.Fatalf("show should not render the document, found %q:\n%s", wantAbsent, stdout)
+		}
 	}
 }
 
@@ -341,12 +340,12 @@ func TestProjectsShowWithoutADocument(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr)
 	}
-	if strings.Contains(stdout, "──") {
-		t.Fatalf("no document should mean no separator:\n%s", stdout)
+	if strings.Contains(stdout, "Doc:") {
+		t.Fatalf("no document should mean no Doc field:\n%s", stdout)
 	}
 }
 
-func TestProjectsShowJSONCarriesTheDocumentSource(t *testing.T) {
+func TestProjectsShowJSONCarriesOnlyTheDocumentPath(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
 	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
@@ -354,10 +353,69 @@ func TestProjectsShowJSONCarriesTheDocumentSource(t *testing.T) {
 	_, stdout, _ := run("--json", "--root", root, "projects", "show", "demo")
 	var d struct {
 		DocPath string `json:"doc_path"`
-		Doc     string `json:"doc"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &d); err != nil {
 		t.Fatalf("not JSON: %v (%q)", err, stdout)
+	}
+	if d.DocPath != filepath.Join("demo", "demo.md") {
+		t.Fatalf("doc_path = %q", d.DocPath)
+	}
+	// The content moved to `projects doc`; show's JSON no longer carries it.
+	if strings.Contains(stdout, `"doc"`) {
+		t.Fatalf("show JSON should not carry the document source: %s", stdout)
+	}
+}
+
+func TestProjectsShowJSONOmitsAMissingDocument(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	_, stdout, _ := run("--json", "--root", root, "projects", "show", "demo")
+	if strings.Contains(stdout, "doc_path") {
+		t.Fatalf("absent document should be omitted: %s", stdout)
+	}
+}
+
+func TestProjectsDocRendersTheProjectDocument(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	code, stdout, stderr := run("--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	for _, want := range []string{"Demo Project", "Decisions", "[✓] Picked YAML", "[ ] Picked a renderer"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("rendered document missing %q:\n%s", want, stdout)
+		}
+	}
+	// The project record itself is not repeated here; that's `projects show`.
+	if strings.Contains(stdout, "Prefix:") {
+		t.Fatalf("doc output should not repeat project fields:\n%s", stdout)
+	}
+	// Markup is consumed, and a non-terminal writer gets no escape codes.
+	if strings.Contains(stdout, "**") || strings.Contains(stdout, "\x1b") {
+		t.Fatalf("output should be plain rendered text:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocJSONCarriesTheDocumentSource(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	_, stdout, _ := run("--json", "--root", root, "projects", "doc", "demo")
+	var d struct {
+		ProjectID string `json:"project_id"`
+		DocPath   string `json:"doc_path"`
+		Doc       string `json:"doc"`
+	}
+	if err := json.Unmarshal([]byte(stdout), &d); err != nil {
+		t.Fatalf("not JSON: %v (%q)", err, stdout)
+	}
+	if d.ProjectID != "demo" {
+		t.Fatalf("project_id = %q", d.ProjectID)
 	}
 	if d.DocPath != filepath.Join("demo", "demo.md") {
 		t.Fatalf("doc_path = %q", d.DocPath)
@@ -368,13 +426,23 @@ func TestProjectsShowJSONCarriesTheDocumentSource(t *testing.T) {
 	}
 }
 
-func TestProjectsShowJSONOmitsAMissingDocument(t *testing.T) {
+func TestProjectsDocWithoutADocumentIsAUsageError(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
 
-	_, stdout, _ := run("--json", "--root", root, "projects", "show", "demo")
-	if strings.Contains(stdout, "doc_path") || strings.Contains(stdout, `"doc"`) {
-		t.Fatalf("absent document should be omitted: %s", stdout)
+	code, _, stderr := run("--root", root, "projects", "doc", "demo")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2 (usage): %s", code, stderr)
+	}
+}
+
+func TestProjectsDocUnknownProjectIsAUsageError(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	code, _, stderr := run("--root", root, "projects", "doc", "nope")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2 (usage): %s", code, stderr)
 	}
 }
 

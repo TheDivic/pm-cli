@@ -66,6 +66,11 @@ func TestCompleteTaskAndProjectIDs(t *testing.T) {
 	if !has(projects, "alpha") || !has(projects, "beta") {
 		t.Fatalf("project completion = %v", projects)
 	}
+
+	docProjects := complete(t, "--root", root, "projects", "doc", "")
+	if !has(docProjects, "alpha") || !has(docProjects, "beta") {
+		t.Fatalf("project doc completion = %v", docProjects)
+	}
 }
 
 func TestCompleteStatusPositions(t *testing.T) {

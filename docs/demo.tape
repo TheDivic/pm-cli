@@ -51,8 +51,13 @@ Type "pm tasks status web-003 web-004 in-progress"
 Enter
 Sleep 2.5s
 
-# One project in detail: fields, progress, and its Markdown document.
+# One project in detail: fields and progress.
 Type "pm projects show website"
+Enter
+Sleep 3s
+
+# Its Markdown document, rendered for the terminal.
+Type "pm projects doc website"
 Enter
 Sleep 4s
 
