@@ -7,10 +7,12 @@ PM CLI reads, validates, queries, formats, and updates `*.tasks.yaml` files. Peo
 Install and invoke the standalone executable directly:
 
 ```text
-pm [--root <path>] [--json] [--no-ignore] <resource> <command> [arguments]
+pm [--root <path>] [--json] [--no-ignore] [--color <auto|always|never>] <resource> <command> [arguments]
 ```
 
 `--root` selects the discovery root explicitly. Without it, `pm` uses the `PM_ROOT` environment variable when set, and otherwise the current working directory. The precedence is `--root`, then `PM_ROOT`, then the working directory. The executable does not depend on a repository-specific launcher, a particular knowledge base, or an agent runtime.
+
+`--color` overrides the automatic terminal detection that decides whether rendered output carries ANSI styling. `auto`, the default, is the existing behavior: styled only when writing to a terminal with `NO_COLOR` unset. `always` styles regardless of destination — the way to keep styling through a pipe into a pager that itself preserves escape codes (for example `pm projects doc <project-id> --color always | less -R`). `never` suppresses styling unconditionally, including on a terminal. An unrecognized value is a usage error.
 
 ## Discovery
 
@@ -61,7 +63,7 @@ pm completion <bash|zsh|fish|powershell>
 
 `projects show` reports a project's stored fields, its task-file path, and a task summary: a completion progress bar (tasks done out of the countable total, with a percentage) and a per-status breakdown in lifecycle order so project progress is visible. In JSON mode the same information is available as task counts. It does not render the project's Markdown document; `projects doc` does. When the project has a document, which by convention is `<project-id>.md` beside the task file, `show` reports its path as `Doc` in human-readable output and `doc_path` in JSON, so a caller knows it exists without reading it. A project without a document reports neither.
 
-`projects doc <project-id>` reports the project's Markdown document in full. Human-readable output renders it for the terminal: headings, list bullets and task checkboxes, block quotes, thematic breaks, tables, and fenced code blocks (with syntax highlighting) are formatted, emphasis, code span, and link markup is consumed rather than printed, and prose wraps to the terminal width with a hanging indent instead of running to the edge unbroken. Rendering uses ANSI styling only when writing to a terminal without `NO_COLOR`; otherwise the same layout is rendered in plain text with the styling removed. Wrap width tracks the terminal's column width, within a readable minimum and maximum, and falls back to a fixed width for non-terminal output. JSON mode carries `project_id`, `doc_path`, and the document's Markdown source in `doc`, unrendered, since a consumer that wants Markdown wants the source. A project without a document, or an unknown project ID, is a usage error.
+`projects doc <project-id>` reports the project's Markdown document in full. Human-readable output renders it for the terminal: headings, list bullets and task checkboxes, block quotes, thematic breaks, tables, and fenced code blocks (with syntax highlighting) are formatted, emphasis, code span, and link markup is consumed rather than printed, and prose wraps to the terminal width with a hanging indent instead of running to the edge unbroken. Rendering uses ANSI styling only when writing to a terminal without `NO_COLOR`, or when `--color always` overrides that detection; otherwise the same layout is rendered in plain text with the styling removed. Wrap width tracks the terminal's column width, within a readable minimum and maximum, and falls back to a fixed width for non-terminal output. JSON mode carries `project_id`, `doc_path`, and the document's Markdown source in `doc`, unrendered, since a consumer that wants Markdown wants the source. A project without a document, or an unknown project ID, is a usage error.
 
 Completion progress measures the work that can still be finished. The denominator is the countable total: every task except those in `cancelled`. Backlog tasks count, because every task is expected to reach either `done` or `cancelled` and unfinished work is unfinished wherever it sits. Cancelled tasks do not, because work that will never be finished would otherwise hold a project below 100% permanently. Human-readable output states the excluded cancelled count alongside the ratio, and a project whose tasks are all cancelled reports that nothing is countable rather than a zero-percent bar. JSON output carries the raw per-status counts and the cancellation-inclusive `total`, so any other ratio can be derived from it.
 
@@ -119,7 +121,7 @@ In JSON mode, successful results go to standard output and errors go to standard
 
 All commands are non-interactive. When required information is missing, `pm` returns a usage error instead of opening a prompt or requiring a terminal session.
 
-Do not use ANSI color when output is not a terminal or when `NO_COLOR` is set.
+Do not use ANSI color when output is not a terminal or when `NO_COLOR` is set, unless `--color always` requests it explicitly; `--color never` suppresses it unconditionally. See `--color` under Entry point.
 
 ## Mutation safety
 

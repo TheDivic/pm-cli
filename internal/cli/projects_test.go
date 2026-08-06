@@ -446,6 +446,66 @@ func TestProjectsDocUnknownProjectIsAUsageError(t *testing.T) {
 	}
 }
 
+func TestProjectsDocColorAlwaysStylesEvenWithoutATerminal(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	// The test harness writes to a bytes.Buffer, never a terminal, so this is
+	// the only way to observe --color's override of the auto-detected default.
+	code, stdout, stderr := run("--color", "always", "--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("--color=always should style output even off a terminal:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocColorNeverSuppressesStyling(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	code, stdout, stderr := run("--color", "never", "--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("--color=never should never style output:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocColorAutoStaysPlainWithoutATerminal(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	// No --color given: the default is "auto", which is the pre-existing
+	// terminal-detection behavior.
+	code, stdout, stderr := run("--root", root, "projects", "doc", "demo")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if strings.Contains(stdout, "\x1b[") {
+		t.Fatalf("--color=auto (default) should stay plain off a terminal:\n%q", stdout)
+	}
+}
+
+func TestProjectsDocInvalidColorIsAUsageError(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+	writeFile(t, filepath.Join(root, "demo", "demo.md"), projectMarkdown)
+
+	code, _, stderr := run("--color", "bogus", "--root", root, "projects", "doc", "demo")
+	if code != 2 {
+		t.Fatalf("exit %d, want 2 (usage): %s", code, stderr)
+	}
+	if !strings.Contains(stderr, "bogus") {
+		t.Fatalf("error should name the bad value: %s", stderr)
+	}
+}
+
 func TestProjectsListHidesTerminalProjectsByDefault(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "live.tasks.yaml"), projFileArea("live", "in-progress", "", "alpha"))

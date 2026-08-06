@@ -16,6 +16,8 @@ type GlobalOptions struct {
 	JSON bool
 	// NoIgnore disables .gitignore filtering during discovery.
 	NoIgnore bool
+	// Color is the --color mode: auto, always, or never.
+	Color string
 }
 
 // newRootCmd builds the pm command tree. The clock is threaded in so that
@@ -40,6 +42,7 @@ func newRootCmd(opts *GlobalOptions, clk clock.Clock) *cobra.Command {
 	pf.StringVar(&opts.Root, "root", "", "discovery root (default: $PM_ROOT or current directory)")
 	pf.BoolVar(&opts.JSON, "json", false, "emit machine-readable JSON")
 	pf.BoolVar(&opts.NoIgnore, "no-ignore", false, "include .gitignored paths in discovery")
+	pf.StringVar(&opts.Color, "color", "auto", "colorize rendered output: auto, always, or never")
 
 	root.AddCommand(newVersionCmd())
 	root.AddCommand(newProjectsCmd(opts, clk))
