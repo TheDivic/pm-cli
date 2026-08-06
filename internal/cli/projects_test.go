@@ -336,23 +336,50 @@ tasks:
     created: "2026-07-31"
 `
 
-func TestProjectsListPinsInboxWithATaskCount(t *testing.T) {
+func TestProjectsListExcludesTheInbox(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "inbox", "inbox.tasks.yaml"), inboxProjectFile)
 	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject) // in-progress
 
 	_, stdout, _ := run("--root", root, "projects", "list")
-	if !strings.Contains(stdout, "INBOX · 2") {
-		t.Fatalf("expected a pinned inbox line with its task count: %q", stdout)
+	// The inbox is a project, not a status — it doesn't belong in a
+	// status-grouped list at all; `pm tasks list -p inbox` is for it.
+	if strings.Contains(stdout, "INBOX") || strings.Contains(stdout, "Inbox") || strings.Contains(stdout, "inbox") {
+		t.Fatalf("inbox should not appear in projects list: %q", stdout)
 	}
-	inboxPos, sectionPos := strings.Index(stdout, "INBOX ·"), strings.Index(stdout, "IN-PROGRESS ·")
-	if inboxPos < 0 || sectionPos < 0 || inboxPos > sectionPos {
-		t.Fatalf("inbox should be pinned above the status sections: %q", stdout)
+	if !strings.Contains(stdout, "demo") {
+		t.Fatalf("the non-inbox project should still be listed: %q", stdout)
 	}
-	// The inbox is not also listed as a regular in-progress project, and its
-	// own status/progress bar are not shown — just the count.
-	if strings.Contains(stdout, "Inbox") || strings.Contains(stdout, "50%") {
-		t.Fatalf("inbox should not appear as a normal project row: %q", stdout)
+}
+
+func TestProjectsListShowsAHeaderRow(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	_, stdout, _ := run("--root", root, "projects", "list")
+	headerPos, sectionPos := strings.Index(stdout, "ID"), strings.Index(stdout, "IN-PROGRESS ·")
+	if headerPos < 0 || sectionPos < 0 || headerPos > sectionPos {
+		t.Fatalf("expected an ID/TITLE/CREATED/PROGRESS header above the sections: %q", stdout)
+	}
+	for _, want := range []string{"ID", "TITLE", "CREATED", "PROGRESS"} {
+		if !strings.Contains(stdout, want) {
+			t.Fatalf("header missing %q: %q", want, stdout)
+		}
+	}
+}
+
+func TestProjectsListSectionHeadersAreBoldOnlyWithColor(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "demo", "demo.tasks.yaml"), validProject)
+
+	_, plain, _ := run("--root", root, "projects", "list")
+	if strings.Contains(plain, "\x1b[") {
+		t.Fatalf("no color requested: output should have no escape codes: %q", plain)
+	}
+
+	_, colored, _ := run("--color", "always", "--root", root, "projects", "list")
+	if !strings.Contains(colored, "\x1b[1mIN-PROGRESS · 1\x1b[0m") {
+		t.Fatalf("--color=always should bold the section header: %q", colored)
 	}
 }
 

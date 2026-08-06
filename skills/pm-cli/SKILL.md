@@ -80,11 +80,13 @@ pm tags
 - `projects list` **hides `done` and `cancelled` projects by default** (`-a`
   includes them; an explicit `-s` overrides). `--json` lists projects flat,
   in-review first, then in-progress, then the rest — and within each group by
-  priority, creation date, ID. Human-readable output instead groups projects
-  into status sections read as the lifecycle pipeline (`idea`, `todo`,
-  `in-progress`, `blocked`, `in-review`, then `done`/`cancelled` with `-a`),
-  with the `inbox` project pinned above every section as `INBOX · <count>`
-  rather than appearing as a row.
+  priority, creation date, ID, including the `inbox` project like any other.
+  Human-readable output instead groups projects into status sections read as
+  the lifecycle pipeline (`idea`, `todo`, `in-progress`, `blocked`,
+  `in-review`, then `done`/`cancelled` with `-a`), behind an `ID`/`TITLE`/
+  `CREATED`/`PROGRESS` header row — and **excludes the `inbox` project
+  entirely**, since it's a project, not a status; use
+  `pm tasks list -p inbox` for it.
 - `projects show` reports a `Doc`/`doc_path` pointer when the project has a
   Markdown document, but not its content. Use `projects doc <project-id>` for
   that — rendered for a terminal by default, or the raw source under `doc` in
