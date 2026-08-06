@@ -322,7 +322,7 @@ func TestProjectsShowRendersTheProjectDocument(t *testing.T) {
 	if !strings.Contains(stdout, "Prefix:") {
 		t.Fatalf("project fields missing: %s", stdout)
 	}
-	for _, want := range []string{"demo.md", "DEMO PROJECT", "Decisions", "☑ Picked YAML", "☐ Picked a renderer"} {
+	for _, want := range []string{"demo.md", "Demo Project", "Decisions", "[✓] Picked YAML", "[ ] Picked a renderer"} {
 		if !strings.Contains(stdout, want) {
 			t.Fatalf("rendered document missing %q:\n%s", want, stdout)
 		}

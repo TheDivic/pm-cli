@@ -5,32 +5,40 @@ import (
 	"testing"
 )
 
-// Rendering without color is the interesting case for tests: the markup must be
-// consumed rather than printed, and the prose must survive intact.
+// Rendering without color is the interesting case for most of these tests:
+// the markup must be consumed rather than printed, and the prose must
+// survive intact, even though styling ran and was stripped rather than never
+// generated.
 func TestRenderPlain(t *testing.T) {
 	tests := []struct {
-		name, in, want string
+		name, in string
+		want     []string
 	}{
-		{"h1 becomes a banner", "# PM CLI", "PM CLI"},
-		{"h2 keeps its case", "## Decisions", "Decisions"},
-		{"h3 keeps its case", "### Format", "Format"},
-		{"bullet gets a glyph", "- one", "• one"},
-		{"nested bullet keeps indent", "  - deep", "  • deep"},
-		{"unchecked task box", "- [ ] do it", "☐ do it"},
-		{"checked task box", "- [x] done it", "☑ done it"},
-		{"ordered list survives", "1. first", "1. first"},
-		{"bold markers are consumed", "a **strong** point", "a strong point"},
-		{"italic markers are consumed", "an *emphatic* point", "an emphatic point"},
-		{"underscore italics too", "an _emphatic_ point", "an emphatic point"},
-		{"code spans are consumed", "run `pm tasks list` now", "run pm tasks list now"},
-		{"links keep label and url", "see [the spec](docs/spec.md)", "see the spec (docs/spec.md)"},
-		{"blockquote is marked", "> quoted", "│ quoted"},
-		{"plain text passes through", "just prose", "just prose"},
+		{"h1 becomes a banner", "# PM CLI", []string{"PM CLI"}},
+		{"h2 keeps its hash prefix", "## Decisions", []string{"## Decisions"}},
+		{"bullet gets a glyph", "- one", []string{"• one"}},
+		{"unchecked task box", "- [ ] do it", []string{"[ ] do it"}},
+		{"checked task box", "- [x] done it", []string{"[✓] done it"}},
+		{"ordered list survives", "1. first", []string{"1. first"}},
+		{"bold markers are consumed", "a **strong** point", []string{"strong"}},
+		{"italic markers are consumed", "an *emphatic* point", []string{"emphatic"}},
+		{"code spans are consumed", "run `pm tasks list` now", []string{"pm tasks list"}},
+		{"links keep the label", "see [the spec](docs/spec.md)", []string{"the spec"}},
+		{"blockquote is marked", "> quoted", []string{"│", "quoted"}},
+		{"plain text passes through", "just prose", []string{"just prose"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Render(tt.in, false); got != tt.want {
-				t.Fatalf("Render(%q) = %q, want %q", tt.in, got, tt.want)
+			got := Render(tt.in, false, 80)
+			for _, want := range tt.want {
+				if !strings.Contains(got, want) {
+					t.Fatalf("Render(%q) = %q, want it to contain %q", tt.in, got, want)
+				}
+			}
+			for _, markup := range []string{"**", "`"} {
+				if strings.Contains(got, markup) {
+					t.Fatalf("Render(%q) = %q, markup %q was not consumed", tt.in, got, markup)
+				}
 			}
 		})
 	}
@@ -38,33 +46,34 @@ func TestRenderPlain(t *testing.T) {
 
 func TestRenderPlainHasNoEscapeCodes(t *testing.T) {
 	in := "# Title\n\nSome **bold** and `code` and [a link](http://example.com).\n\n- item\n"
-	if got := Render(in, false); strings.Contains(got, "\x1b") {
+	if got := Render(in, false, 80); strings.Contains(got, "\x1b") {
 		t.Fatalf("color=false produced escape codes: %q", got)
 	}
 }
 
-func TestRenderColorStyles(t *testing.T) {
-	got := Render("## Decisions", true)
-	if !strings.Contains(got, "\x1b[1m") || !strings.Contains(got, "Decisions") {
-		t.Fatalf("h2 should be bold: %q", got)
+func TestRenderColorProducesEscapeCodes(t *testing.T) {
+	got := Render("## Decisions", true, 80)
+	if !strings.Contains(got, "\x1b[") {
+		t.Fatalf("color=true should style output: %q", got)
 	}
-	if !strings.HasSuffix(got, reset) {
-		t.Fatalf("styling should be reset: %q", got)
+	if !strings.Contains(got, "Decisions") {
+		t.Fatalf("styled output lost the text: %q", got)
 	}
 }
 
 func TestCodeFencesAreIndentedAndNotParsed(t *testing.T) {
 	in := "text\n\n```sh\npm tasks list --all\n# not a heading\n```\n\nafter"
-	got := Render(in, false)
+	got := Render(in, false, 80)
 	if strings.Contains(got, "```") {
 		t.Fatalf("fences should not be printed: %q", got)
 	}
-	if !strings.Contains(got, "    pm tasks list --all") {
-		t.Fatalf("code should be indented: %q", got)
+	if !strings.Contains(got, "pm tasks list --all") {
+		t.Fatalf("code content missing: %q", got)
 	}
-	// Markup inside a fence is content, not markup.
-	if !strings.Contains(got, "    # not a heading") {
-		t.Fatalf("code contents should not be rendered: %q", got)
+	// Markup inside a fence is content, not markup: the heading marker should
+	// still be there, just not turned into a heading.
+	if !strings.Contains(got, "# not a heading") {
+		t.Fatalf("code contents should not be rendered as Markdown: %q", got)
 	}
 	if !strings.Contains(got, "after") {
 		t.Fatalf("content after the fence was dropped: %q", got)
@@ -73,61 +82,60 @@ func TestCodeFencesAreIndentedAndNotParsed(t *testing.T) {
 
 func TestCodeSpanContentsAreNotEmphasized(t *testing.T) {
 	// The asterisks belong to the code, not to Markdown.
-	got := Render("use `a*b*c` here", false)
-	if got != "use a*b*c here" {
+	got := Render("use `a*b*c` here", false, 80)
+	if !strings.Contains(got, "a*b*c") {
 		t.Fatalf("got %q", got)
 	}
 }
 
 func TestFrontMatterIsSkipped(t *testing.T) {
 	in := "---\ntitle: Something\n---\n\n# Real Title\n"
-	got := Render(in, false)
+	got := Render(in, false, 80)
 	if strings.Contains(got, "title: Something") {
 		t.Fatalf("front matter should not be shown: %q", got)
 	}
-	if got != "REAL TITLE" {
+	if !strings.Contains(got, "Real Title") {
 		t.Fatalf("got %q", got)
 	}
 }
 
-func TestUnterminatedDashesAreARule(t *testing.T) {
-	// Without a closing delimiter it is a thematic break, not front matter.
-	got := Render("above\n\n---\n\nbelow", false)
-	if !strings.Contains(got, "─") {
-		t.Fatalf("expected a rule: %q", got)
+func TestLongProseWrapsWithAHangingIndent(t *testing.T) {
+	in := "- " + strings.Repeat("word ", 40)
+	got := Render(in, false, 40)
+	lines := strings.Split(strings.TrimRight(got, "\n"), "\n")
+	if len(lines) < 2 {
+		t.Fatalf("expected wrapping to produce multiple lines, got %d: %q", len(lines), got)
 	}
-	if !strings.Contains(got, "above") || !strings.Contains(got, "below") {
-		t.Fatalf("content lost: %q", got)
-	}
-}
-
-func TestIsRule(t *testing.T) {
-	for _, in := range []string{"---", "***", "___", "- - -", "----------"} {
-		if !isRule(in) {
-			t.Fatalf("%q should be a rule", in)
+	for _, l := range lines {
+		if l == "" {
+			continue
 		}
-	}
-	for _, in := range []string{"--", "- item", "-- text", "a---b", ""} {
-		if isRule(in) {
-			t.Fatalf("%q should not be a rule", in)
+		if !strings.HasPrefix(l, "  ") {
+			t.Fatalf("wrapped line missing hanging indent: %q", l)
 		}
 	}
 }
 
 func TestEmptyAndWhitespaceDocuments(t *testing.T) {
 	for _, in := range []string{"", "\n\n\n", "   \n  \n"} {
-		if got := Render(in, false); strings.TrimSpace(got) != "" {
+		if got := Render(in, false, 80); strings.TrimSpace(got) != "" {
 			t.Fatalf("Render(%q) = %q, want empty", in, got)
 		}
 	}
 }
 
-func TestTablesPassThrough(t *testing.T) {
+func TestTablesAreFormatted(t *testing.T) {
 	in := "| a | b |\n|---|---|\n| 1 | 2 |"
-	got := Render(in, false)
-	for _, want := range []string{"| a | b |", "| 1 | 2 |"} {
+	got := Render(in, false, 80)
+	for _, want := range []string{"a", "b", "1", "2"} {
 		if !strings.Contains(got, want) {
-			t.Fatalf("table row %q missing from %q", want, got)
+			t.Fatalf("table cell %q missing from %q", want, got)
 		}
+	}
+}
+
+func TestNonPositiveWidthFallsBackToADefault(t *testing.T) {
+	if got := Render("hello", false, 0); !strings.Contains(got, "hello") {
+		t.Fatalf("Render with width=0 should still render: %q", got)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/x/term"
 )
 
 // labelWidth aligns the value column in key/value detail output.
@@ -40,6 +42,37 @@ func useColor(w io.Writer) bool {
 		return false
 	}
 	return info.Mode()&os.ModeCharDevice != 0
+}
+
+// docWidth is the fallback and bound for the width Markdown documents are
+// wrapped and ruled to: wide enough to read comfortably, capped so a maximized
+// terminal does not stretch prose across the whole screen.
+const (
+	docWidthDefault = 72
+	docWidthMin     = 40
+	docWidthMax     = 100
+)
+
+// docWidth reports the column width to wrap a project document to. Piped or
+// non-terminal output uses the same width the CLI has always ruled its
+// document separator at.
+func docWidth(w io.Writer) int {
+	f, ok := w.(*os.File)
+	if !ok {
+		return docWidthDefault
+	}
+	width, _, err := term.GetSize(f.Fd())
+	if err != nil || width <= 0 {
+		return docWidthDefault
+	}
+	switch {
+	case width < docWidthMin:
+		return docWidthMin
+	case width > docWidthMax:
+		return docWidthMax
+	default:
+		return width
+	}
 }
 
 // filledCells returns how many of width cells to fill for done out of total,

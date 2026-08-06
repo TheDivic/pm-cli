@@ -198,13 +198,13 @@ func writeProjectDoc(w io.Writer, p *discover.Project) {
 	if !ok || strings.TrimSpace(content) == "" {
 		return
 	}
-	fmt.Fprintf(w, "\n%s\n\n%s\n", docSeparator(rel), mdrender.Render(content, useColor(w)))
+	width := docWidth(w)
+	fmt.Fprintf(w, "\n%s\n\n%s\n", docSeparator(rel, width), mdrender.Render(content, useColor(w), width))
 }
 
 // docSeparator draws a labeled rule so the document is clearly a different kind
 // of content from the fields above it.
-func docSeparator(label string) string {
-	const width = 72
+func docSeparator(label string, width int) string {
 	prefix := "── " + label + " "
 	if n := width - len([]rune(prefix)); n > 0 {
 		return prefix + strings.Repeat("─", n)
